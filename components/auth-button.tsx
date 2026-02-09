@@ -12,8 +12,6 @@ export async function AuthButton() {
 
   const user = data?.claims;
 
-  console.log("User Details", user);
-
   return user ? (
     <div className="flex items-center gap-4">
       Hey, {user?.user_metadata?.name ?? user.email}!

@@ -11,6 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableSkletonRows } from "@/components/table-skleton-rows";
+import { Button } from "./ui/button";
+import { ViewIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const chitReducer = (state: any, action: { type: string; data: any }) => {
   const { type, data } = action;
@@ -45,6 +48,7 @@ export const ChitTable = () => {
     values: [],
     error: null,
   });
+  const router = useRouter();
 
   React.useEffect(() => {
     fetchChits();
@@ -82,9 +86,13 @@ export const ChitTable = () => {
     }
   };
 
+  const handleViewChit = (chitObj: any) => {
+    router.push(`/chit/${chitObj.id}`);
+  };
+
   const renderTableRows = () => {
     if (chitState?.loading) {
-      return <TableSkletonRows rowsCount={5} colsCount={6} />;
+      return <TableSkletonRows rowsCount={5} colsCount={7} />;
     }
 
     return chitState?.values?.map((chitObj: any) => {
@@ -96,6 +104,15 @@ export const ChitTable = () => {
           <TableCell>{chitObj.months}</TableCell>
           <TableCell>{chitObj.charges}</TableCell>
           <TableCell>{chitObj.start_date}</TableCell>
+          <TableCell className="text-right">
+            <Button
+              variant={"outline"}
+              size={"icon"}
+              onClick={() => handleViewChit(chitObj)}
+            >
+              <ViewIcon />
+            </Button>
+          </TableCell>
         </TableRow>
       );
     });
@@ -111,6 +128,7 @@ export const ChitTable = () => {
           <TableHead>No Of Months</TableHead>
           <TableHead>Charges / Month</TableHead>
           <TableHead>Start Date</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>{renderTableRows()}</TableBody>

@@ -13,14 +13,11 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     // Store chunk with embedding in database
-    const { error, data } = await supabase.from("chits").insert({
-      user_id: user?.id,
+    const { error, data } = await supabase.from("members").insert({
       name: formDataDetails.get("name"),
-      amount: formDataDetails.get("amount"),
-      members: formDataDetails.get("noOfMembers"),
-      months: formDataDetails.get("noOfAuctions"),
-      charges: formDataDetails.get("charges"),
-      start_date: formDataDetails.get("startDate"),
+      mobile: formDataDetails.get("mobile"),
+      created_by: user?.id,
+      chit_id: formDataDetails.get("chit_id"),
     });
 
     if (error) {
@@ -41,26 +38,32 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to create chit",
+        error: error.message || "Failed to add member to chit",
       },
       { status: 500 },
     );
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const supabase = await createClient();
+    const reqUrl = new URL(req.url);
+    const chitId = reqUrl.searchParams.get("chitId");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    if (!chitId) {
+      return NextResponse.json(
+        { error: "Chit Id not available" },
+        { status: 404 },
+      );
+    }
+
+    const supabase = await createClient();
 
     // Store chunk with embedding in database
     const { error, data } = await supabase
-      .from("chits")
+      .from("members")
       .select("*")
-      .eq("user_id", user?.id);
+      .eq("chit_id", chitId);
 
     if (error) {
       return NextResponse.json(
@@ -74,13 +77,13 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      chits: data,
+      members: data,
     });
   } catch (error: any) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to get chits",
+        error: error.message || "Failed to get members",
       },
       { status: 500 },
     );

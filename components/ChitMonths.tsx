@@ -1,0 +1,66 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { TableSkletonRows } from "./table-skleton-rows";
+import { useFetchChitMonths } from "@/hooks/use-fetch-chit-months";
+import { AddMonths } from "./add-months";
+import React from "react";
+import { MemberContext } from "@/context/MemberContext";
+
+export const ChitMonths = ({ chitId }: { chitId: string }) => {
+  const {
+    loading,
+    values,
+    refetch: fetchChitMonths,
+  } = useFetchChitMonths(chitId);
+  const { values: members } = React.useContext(MemberContext);
+
+  const renderTableRows = () => {
+    if (loading) {
+      return <TableSkletonRows rowsCount={5} colsCount={4} />;
+    }
+    return values?.map((auctionObj: any) => {
+      const memberDetails: any = members?.find(
+        (memberObj: any) => memberObj?.id === auctionObj?.auction_user,
+      );
+      return (
+        <TableRow key={auctionObj.id}>
+          <TableCell className="font-medium">{auctionObj?.name}</TableCell>
+          <TableCell>{auctionObj?.auction_date}</TableCell>
+          <TableCell>{auctionObj?.auction_amount}</TableCell>
+          <TableCell>{memberDetails?.name ?? "-"}</TableCell>
+        </TableRow>
+      );
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex mt-8 mb-4">
+        <h5 className="text-xl font-bold tracking-tight text-gray-900 self-center">
+          Chit Months
+        </h5>
+        <div className="flex justify-end self-center ml-auto">
+          <AddMonths chitId={chitId} refetch={fetchChitMonths} />
+        </div>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Auction Date</TableHead>
+            <TableHead>Auction Amount</TableHead>
+            <TableHead>Auction User</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>{renderTableRows()}</TableBody>
+      </Table>
+    </div>
+  );
+};

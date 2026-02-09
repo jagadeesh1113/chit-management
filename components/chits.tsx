@@ -1,6 +1,6 @@
 "use client";
 
-import { ChitTable } from "./chit-table";
+import { ChitTable } from "./ChitTable";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
 
@@ -12,7 +12,7 @@ export const Chits = () => {
   };
 
   return (
-    <div className="px-5">
+    <div>
       <div className="flex justify-end">
         <Button onClick={handleAddNewChit}>Add new</Button>
       </div>
