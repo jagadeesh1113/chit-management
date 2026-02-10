@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { Navigation } from "./Navigation";
+import { AuthProvider } from "@/context/AuthContext";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -35,8 +36,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navigation />
-          {children}
+          <AuthProvider>
+            <Navigation />
+            {children}
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

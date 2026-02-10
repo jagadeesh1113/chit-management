@@ -1,6 +1,6 @@
+"use client";
 import { AuthButton } from "@/components/auth-button";
 import Link from "next/link";
-import { Suspense } from "react";
 
 export const Navigation = () => {
   return (
@@ -9,9 +9,7 @@ export const Navigation = () => {
         <div className="flex gap-5 items-center font-semibold">
           <Link href={"/"}>Chit Management</Link>
         </div>
-        <Suspense>
-          <AuthButton />
-        </Suspense>
+        <AuthButton />
       </div>
     </nav>
   );
