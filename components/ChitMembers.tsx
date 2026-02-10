@@ -10,10 +10,11 @@ import {
   TableRow,
 } from "./ui/table";
 import { TableSkletonRows } from "./table-skleton-rows";
-import { useFetchMembers } from "@/hooks/use-fetch-members";
+import { Badge } from "./ui/badge";
+import { MemberContext } from "@/context/MemberContext";
 
 export const ChitMembers = ({ chitId }: { chitId: string }) => {
-  const { values, loading, refetch } = useFetchMembers(chitId);
+  const { values, loading, refetch } = React.useContext(MemberContext);
 
   const renderTableRows = () => {
     if (loading) {
@@ -22,7 +23,16 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
     return values?.map((memberObj: any) => {
       return (
         <TableRow key={memberObj.id}>
-          <TableCell className="font-medium">{memberObj?.name}</TableCell>
+          <TableCell className="font-medium">
+            <div className="flex">
+              <div>{memberObj?.name}</div>
+              {memberObj.owner ? (
+                <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 ml-2">
+                  Owner
+                </Badge>
+              ) : null}
+            </div>
+          </TableCell>
           <TableCell>{memberObj?.mobile}</TableCell>
           <TableCell>{"-"}</TableCell>
         </TableRow>
@@ -34,7 +44,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
     <div>
       <div className="flex mt-8 mb-4">
         <h5 className="text-xl font-bold tracking-tight text-gray-900 self-center">
-          Chit Members
+          Chit Members ({values.length})
         </h5>
         <div className="flex justify-end self-center ml-auto">
           <AddMembers chitId={chitId} refetch={refetch} />

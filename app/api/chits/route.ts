@@ -13,15 +13,18 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     // Store chunk with embedding in database
-    const { error, data } = await supabase.from("chits").insert({
-      user_id: user?.id,
-      name: formDataDetails.get("name"),
-      amount: formDataDetails.get("amount"),
-      members: formDataDetails.get("noOfMembers"),
-      months: formDataDetails.get("noOfAuctions"),
-      charges: formDataDetails.get("charges"),
-      start_date: formDataDetails.get("startDate"),
-    });
+    const { error, data } = await supabase
+      .from("chits")
+      .insert({
+        user_id: user?.id,
+        name: formDataDetails.get("name"),
+        amount: formDataDetails.get("amount"),
+        members: formDataDetails.get("noOfMembers"),
+        months: formDataDetails.get("noOfAuctions"),
+        charges: formDataDetails.get("charges"),
+        start_date: formDataDetails.get("startDate"),
+      })
+      .select();
 
     if (error) {
       return NextResponse.json(

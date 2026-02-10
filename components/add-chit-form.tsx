@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 export function AddChitForm({
   className,
@@ -17,7 +18,29 @@ export function AddChitForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { user } = useAuth();
+
   const router = useRouter();
+
+  const addChitOwnerAsMember = async ({ chitId }: { chitId: string }) => {
+    try {
+      const formData = new FormData();
+
+      formData.append("chit_id", chitId);
+      formData.append("name", user?.user_metadata?.name ?? user?.email);
+      formData.append("mobile", user?.user_metadata?.mobile);
+      formData.append("owner", JSON.stringify(true));
+
+      const res = await fetch("/api/members", {
+        method: "POST",
+        body: formData,
+      });
+
+      await res.json();
+    } catch (error: any) {
+      setError(error);
+    }
+  };
 
   const handleAddChit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -32,6 +55,12 @@ export function AddChitForm({
       });
 
       const data = await res.json();
+
+      const chitDetails = data?.values?.[0];
+
+      await addChitOwnerAsMember({
+        chitId: chitDetails?.id,
+      });
 
       if (data.success) {
         toast.success("Chit added successfully", {

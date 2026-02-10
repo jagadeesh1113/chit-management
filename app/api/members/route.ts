@@ -12,12 +12,14 @@ export async function POST(req: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const owner = formDataDetails.get("owner") as string;
     // Store chunk with embedding in database
     const { error, data } = await supabase.from("members").insert({
       name: formDataDetails.get("name"),
       mobile: formDataDetails.get("mobile"),
       created_by: user?.id,
       chit_id: formDataDetails.get("chit_id"),
+      owner: owner ? JSON.parse(owner) : false,
     });
 
     if (error) {

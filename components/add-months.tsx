@@ -16,6 +16,8 @@ import { Input } from "./ui/input";
 import React from "react";
 import { toast } from "sonner";
 import { ChitMemberSelect } from "./ChitMemberSelect";
+import { MemberContext } from "@/context/MemberContext";
+import { ChitContext } from "@/context/ChitContext";
 
 export const AddMonths = ({
   chitId,
@@ -24,10 +26,42 @@ export const AddMonths = ({
   chitId: string;
   refetch: () => void;
 }) => {
+  const { values: members } = React.useContext(MemberContext);
+  const { chitDetails } = React.useContext(ChitContext);
+
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [auctionUser, setAuctionUser] = React.useState<string>("");
+
+  const addPaymentsForMembers = async ({
+    auctionAmount,
+    month_id,
+    auction_member_obj,
+  }: {
+    auctionAmount: number;
+    month_id: string;
+    auction_member_obj: any;
+  }) => {
+    const amountPerMember = auction_member_obj?.owner
+      ? chitDetails?.amount / 20
+      : (chitDetails?.amount - auctionAmount + chitDetails.charges) / 20;
+    try {
+      const res = await fetch("/api/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          members,
+          amountPerMember,
+          chit_id: chitId,
+          month_id,
+        }),
+      });
+
+      await res.json();
+    } catch (error: any) {
+      setError(error);
+    }
+  };
 
   const handleAddMonth = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -43,6 +77,15 @@ export const AddMonths = ({
       });
 
       const data = await res.json();
+
+      const auctionDetails = data?.values?.[0];
+      await addPaymentsForMembers({
+        auctionAmount: auctionDetails?.auction_amount,
+        month_id: auctionDetails?.id,
+        auction_member_obj: members.find(
+          (memberObj: any) => memberObj.id === auctionUser,
+        ),
+      });
 
       if (data.success) {
         toast.success("Month added successfully", {

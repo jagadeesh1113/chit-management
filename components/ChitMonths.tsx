@@ -12,6 +12,7 @@ import { useFetchChitMonths } from "@/hooks/use-fetch-chit-months";
 import { AddMonths } from "./add-months";
 import React from "react";
 import { MemberContext } from "@/context/MemberContext";
+import { MonthlyPaymentsDialog } from "./MonthlyPaymentsDialog";
 
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const {
@@ -35,6 +36,12 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
           <TableCell>{auctionObj?.auction_date}</TableCell>
           <TableCell>{auctionObj?.auction_amount}</TableCell>
           <TableCell>{memberDetails?.name ?? "-"}</TableCell>
+          <TableCell className="text-right">
+            <MonthlyPaymentsDialog
+              month_name={auctionObj?.name}
+              month_id={auctionObj?.id}
+            />
+          </TableCell>
         </TableRow>
       );
     });
@@ -57,6 +64,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             <TableHead>Auction Date</TableHead>
             <TableHead>Auction Amount</TableHead>
             <TableHead>Auction User</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>{renderTableRows()}</TableBody>

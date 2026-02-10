@@ -4,12 +4,13 @@
 import { Card, CardContent } from "./ui/card";
 import { CardValues } from "./CardValues";
 import { ChitMembers } from "./ChitMembers";
-import { useFetchChitDetails } from "@/hooks/use-fetch-chit-details";
 import { MemberProvider } from "@/context/MemberContext";
 import { ChitMonths } from "./ChitMonths";
+import { ChitContext } from "@/context/ChitContext";
+import React from "react";
 
 export const ChitDetails = ({ id }: { id: string }) => {
-  const { chitDetails } = useFetchChitDetails(id);
+  const { chitDetails } = React.useContext(ChitContext);
 
   return (
     <div>

@@ -1,4 +1,5 @@
 import { ChitDetails } from "@/components/ChitDetails";
+import { ChitProvider } from "@/context/ChitContext";
 import { Suspense } from "react";
 
 const ChitDetailsContainer = async ({
@@ -11,7 +12,9 @@ const ChitDetailsContainer = async ({
   return (
     <div className="flex min-h-svh w-full p-6 md:p-10">
       <div className="w-full">
-        <ChitDetails id={id} />
+        <ChitProvider chitId={id}>
+          <ChitDetails id={id} />
+        </ChitProvider>
       </div>
     </div>
   );
