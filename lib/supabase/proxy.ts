@@ -40,8 +40,6 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  console.log("Logged in user data", user);
-
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
