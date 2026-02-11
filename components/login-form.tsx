@@ -39,19 +39,6 @@ export function LoginForm({
       });
       if (error) throw error;
 
-      // Wait for the session to be established
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        const { data: claims, error: claimsError } =
-          await supabase.auth.getClaims();
-        if (claimsError) {
-          console.error("Failed to get claims:", claimsError.message);
-        } else {
-          console.log("User claims:", claims);
-        }
-      }
       router.push("/");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
