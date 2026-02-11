@@ -70,7 +70,7 @@ export const ChitPaymentsTable = ({
 
     return values?.map((paymentObj: any) => {
       return (
-        <TableRow key={paymentObj.id}>
+        <TableRow key={paymentObj.payment_id}>
           <TableCell className="font-medium">{paymentObj.name}</TableCell>
           <TableCell>{paymentObj.mobile}</TableCell>
           <TableCell>{paymentObj.amount}</TableCell>
