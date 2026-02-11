@@ -71,6 +71,7 @@ export const AddMonths = ({
     formData.append("auction_user", auctionUser);
 
     try {
+      setLoading(true);
       const res = await fetch("/api/months", {
         method: "POST",
         body: formData,

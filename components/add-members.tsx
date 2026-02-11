@@ -33,6 +33,7 @@ export const AddMembers = ({
 
     formData.append("chit_id", chitId);
 
+    setLoading(true);
     try {
       const res = await fetch("/api/members", {
         method: "POST",
