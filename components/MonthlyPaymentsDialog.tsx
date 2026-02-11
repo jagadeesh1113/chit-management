@@ -1,4 +1,3 @@
-import { ViewIcon } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -7,26 +6,27 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { ChitPaymentsTable } from "./ChitPaymentsTable";
 import React from "react";
+import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
 
 export const MonthlyPaymentsDialog = ({
   month_name,
   month_id,
+  isDialogOpen,
+  onChangeDialogOpen,
 }: {
   month_name: string;
   month_id: string;
+  isDialogOpen: boolean;
+  onChangeDialogOpen: (value: boolean) => void;
 }) => {
+  const { loading, values, refetch } = useFetchChitPayments(month_id);
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size={"icon"}>
-          <ViewIcon />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isDialogOpen} onOpenChange={onChangeDialogOpen}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Chit Monthly Payments</DialogTitle>
@@ -35,7 +35,11 @@ export const MonthlyPaymentsDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="no-scrollbar overflow-y-auto px-4 h-[50vh]">
-          <ChitPaymentsTable month_id={month_id} />
+          <ChitPaymentsTable
+            loading={loading}
+            values={values}
+            refetch={refetch}
+          />
         </div>
         <DialogFooter>
           <DialogClose asChild>

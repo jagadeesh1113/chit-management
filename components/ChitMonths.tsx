@@ -13,6 +13,8 @@ import { AddMonths } from "./add-months";
 import React from "react";
 import { MemberContext } from "@/context/MemberContext";
 import { MonthlyPaymentsDialog } from "./MonthlyPaymentsDialog";
+import { Button } from "./ui/button";
+import { ViewIcon } from "lucide-react";
 
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const {
@@ -20,7 +22,15 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
     values,
     refetch: fetchChitMonths,
   } = useFetchChitMonths(chitId);
+
   const { values: members } = React.useContext(MemberContext);
+  const [selectedMonth, setSelectedMonth] = React.useState<null | any>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  const handleSelectMonthlyPayments = (monthObj: any) => {
+    setSelectedMonth(monthObj);
+    setIsDialogOpen(true);
+  };
 
   const renderTableRows = () => {
     if (loading) {
@@ -37,10 +47,13 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
           <TableCell>{auctionObj?.auction_amount}</TableCell>
           <TableCell>{memberDetails?.name ?? "-"}</TableCell>
           <TableCell className="text-right">
-            <MonthlyPaymentsDialog
-              month_name={auctionObj?.name}
-              month_id={auctionObj?.id}
-            />
+            <Button
+              variant="outline"
+              size={"icon"}
+              onClick={() => handleSelectMonthlyPayments(auctionObj)}
+            >
+              <ViewIcon />
+            </Button>
           </TableCell>
         </TableRow>
       );
@@ -69,6 +82,12 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         </TableHeader>
         <TableBody>{renderTableRows()}</TableBody>
       </Table>
+      <MonthlyPaymentsDialog
+        month_name={selectedMonth?.name}
+        month_id={selectedMonth?.id}
+        isDialogOpen={isDialogOpen}
+        onChangeDialogOpen={setIsDialogOpen}
+      />
     </div>
   );
 };

@@ -6,8 +6,7 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient();
 
-    const { members, auction_user, amountPerMember, chit_id, month_id } =
-      await req.json();
+    const { members, amountPerMember, chit_id, month_id } = await req.json();
 
     const {
       data: { user },
@@ -17,7 +16,7 @@ export async function POST(req: Request) {
       return {
         member_id: memberObj?.id,
         amount: amountPerMember,
-        payment_status: memberObj?.id === auction_user ? true : false,
+        payment_status: memberObj?.owner ? true : false,
         chit_id,
         month_id,
         created_by: user?.id,
@@ -112,8 +111,6 @@ export async function GET(req: Request) {
         selected_month_id: monthId,
       },
     );
-
-    console.log("Error details", error);
 
     if (error) {
       return NextResponse.json(

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
 import { Button } from "./ui/button";
 import {
   Table,
@@ -29,8 +28,15 @@ const PaymentStatus = ({ status }: { status: boolean }) => {
   );
 };
 
-export const ChitPaymentsTable = ({ month_id }: { month_id: string }) => {
-  const { loading, values, refetch } = useFetchChitPayments(month_id);
+export const ChitPaymentsTable = ({
+  refetch,
+  loading,
+  values,
+}: {
+  refetch: () => void;
+  loading: boolean;
+  values: any[];
+}) => {
   const [error, setError] = React.useState(null);
 
   const handleUpdatePaymentStatus = async (paymentObj: any) => {

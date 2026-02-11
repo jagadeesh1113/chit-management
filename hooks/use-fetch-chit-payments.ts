@@ -41,6 +41,9 @@ export const useFetchChitPayments = (month_id: string) => {
   const { values, loading, error } = chitPaymentsState;
 
   const fetchChitPayments = React.useCallback(async () => {
+    if (!month_id) {
+      return;
+    }
     try {
       console.trace("Fetching chit payments");
       dispatch({
