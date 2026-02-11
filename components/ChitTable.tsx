@@ -15,87 +15,25 @@ import { Button } from "./ui/button";
 import { ViewIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const chitReducer = (state: any, action: { type: string; data: any }) => {
-  const { type, data } = action;
-
-  switch (type) {
-    case "SET_LOADING": {
-      return {
-        ...state,
-        loading: data,
-      };
-    }
-    case "SET_VALUES": {
-      return {
-        ...state,
-        values: data,
-      };
-    }
-    case "SET_ERROR": {
-      return {
-        ...state,
-        error: data,
-      };
-    }
-    default:
-      return state;
-  }
-};
-
-export const ChitTable = () => {
-  const [chitState, dispatch] = React.useReducer(chitReducer, {
-    loading: true,
-    values: [],
-    error: null,
-  });
+export const ChitTable = ({
+  loading,
+  values,
+}: {
+  loading: boolean;
+  values: any[];
+}) => {
   const router = useRouter();
-
-  React.useEffect(() => {
-    fetchChits();
-  }, []);
-
-  const fetchChits = async () => {
-    try {
-      dispatch({
-        type: "SET_LOADING",
-        data: true,
-      });
-      const res = await fetch("/api/chits");
-      const data = await res.json();
-      if (data.error) {
-        dispatch({
-          type: "SET_ERROR",
-          data: data.error,
-        });
-      } else {
-        dispatch({
-          type: "SET_VALUES",
-          data: data.chits,
-        });
-      }
-    } catch (err) {
-      dispatch({
-        type: "SET_ERROR",
-        data: err instanceof Error ? err.message : "Failed to fetch documents",
-      });
-    } finally {
-      dispatch({
-        type: "SET_LOADING",
-        data: false,
-      });
-    }
-  };
 
   const handleViewChit = (chitObj: any) => {
     router.push(`/chit/${chitObj.id}`);
   };
 
   const renderTableRows = () => {
-    if (chitState?.loading) {
+    if (loading) {
       return <TableSkletonRows rowsCount={5} colsCount={7} />;
     }
 
-    return chitState?.values?.map((chitObj: any) => {
+    return values?.map((chitObj: any) => {
       return (
         <TableRow key={chitObj.id}>
           <TableCell className="font-medium">{chitObj.name}</TableCell>

@@ -1,22 +1,18 @@
 "use client";
 
+import { useFetchChits } from "@/hooks/use-fetch-chits";
+import { AddChit } from "./add-chit";
 import { ChitTable } from "./ChitTable";
-import { Button } from "./ui/button";
-import { useRouter } from "next/navigation";
 
 export const Chits = () => {
-  const router = useRouter();
-
-  const handleAddNewChit = () => {
-    router.push("/add-chit");
-  };
+  const { loading, values, refetch } = useFetchChits();
 
   return (
     <div>
       <div className="flex justify-end">
-        <Button onClick={handleAddNewChit}>Add new</Button>
+        <AddChit refetch={refetch} />
       </div>
-      <ChitTable />
+      <ChitTable loading={loading} values={values} />
     </div>
   );
 };
