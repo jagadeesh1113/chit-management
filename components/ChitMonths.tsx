@@ -46,6 +46,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
           <TableCell>{auctionObj?.auction_date}</TableCell>
           <TableCell>{auctionObj?.auction_amount}</TableCell>
           <TableCell>{memberDetails?.name ?? "-"}</TableCell>
+          <TableCell>{`${auctionObj?.payments_count} / 20`}</TableCell>
           <TableCell className="text-right">
             <Button
               variant="outline"
@@ -77,6 +78,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             <TableHead>Auction Date</TableHead>
             <TableHead>Auction Amount</TableHead>
             <TableHead>Auction User</TableHead>
+            <TableHead>Payments</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>

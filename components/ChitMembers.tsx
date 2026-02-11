@@ -34,7 +34,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
             </div>
           </TableCell>
           <TableCell>{memberObj?.mobile}</TableCell>
-          <TableCell>{"-"}</TableCell>
+          <TableCell>{`${memberObj?.payments_count ?? 0} / 20`}</TableCell>
         </TableRow>
       );
     });
@@ -55,7 +55,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Mobile</TableHead>
-            <TableHead>Pending Dues</TableHead>
+            <TableHead>Payments</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>{renderTableRows()}</TableBody>

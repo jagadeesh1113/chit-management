@@ -64,11 +64,9 @@ export async function GET(req: Request) {
 
     const supabase = await createClient();
 
-    // Store chunk with embedding in database
-    const { error, data } = await supabase
-      .from("months")
-      .select("*")
-      .eq("chit_id", chitId);
+    const { data, error } = await supabase.rpc("get_chit_months_v7", {
+      selected_chit_id: chitId,
+    });
 
     if (error) {
       return NextResponse.json(
