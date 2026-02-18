@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Dialog,
   DialogClose,
@@ -9,8 +10,9 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { ChitPaymentsTable } from "./ChitPaymentsTable";
-import React from "react";
 import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
+import { MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const MonthlyPaymentsDialog = ({
   month_name,
@@ -25,6 +27,26 @@ export const MonthlyPaymentsDialog = ({
 }) => {
   const { loading, values, refetch } = useFetchChitPayments(month_id);
 
+  const handleSendMessage = async () => {
+    if (loading) {
+      return;
+    }
+    const payment_reminder_recipients = values?.filter(
+      (paymentObj: any) => !paymentObj?.payment_status,
+    );
+    const res = await fetch("/api/send-message", {
+      method: "POST",
+      body: JSON.stringify({
+        payment_reminder_recipients,
+      }),
+    });
+
+    await res.json();
+    toast.success("Payment Reminder sent successfully", {
+      position: "top-right",
+    });
+  };
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={onChangeDialogOpen}>
       <DialogContent className="max-w-4xl">
@@ -34,6 +56,12 @@ export const MonthlyPaymentsDialog = ({
             Member payments for {month_name}
           </DialogDescription>
         </DialogHeader>
+        <div className="flex justify-end px-4">
+          <Button variant={"secondary"} onClick={handleSendMessage}>
+            <MessageCircle />
+            Send Message
+          </Button>
+        </div>
         <div className="no-scrollbar overflow-y-auto px-4 h-[50vh]">
           <ChitPaymentsTable
             loading={loading}

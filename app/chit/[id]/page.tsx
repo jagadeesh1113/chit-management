@@ -1,4 +1,6 @@
+import { Navigation } from "@/app/Navigation";
 import { ChitDetails } from "@/components/ChitDetails";
+import { AuthProvider } from "@/context/AuthContext";
 import { ChitProvider } from "@/context/ChitContext";
 import { Suspense } from "react";
 
@@ -26,8 +28,11 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <Suspense fallback="loading chit details...">
-      <ChitDetailsContainer params={params} />
-    </Suspense>
+    <AuthProvider>
+      <Navigation />
+      <Suspense fallback="loading chit details...">
+        <ChitDetailsContainer params={params} />
+      </Suspense>
+    </AuthProvider>
   );
 }

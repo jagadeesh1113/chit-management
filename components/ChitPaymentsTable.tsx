@@ -77,13 +77,22 @@ export const ChitPaymentsTable = ({
           <TableCell>
             <PaymentStatus status={paymentObj?.payment_status} />
           </TableCell>
-          <TableCell className="text-right">
-            <Button
-              variant={"outline"}
-              onClick={() => handleUpdatePaymentStatus(paymentObj)}
-            >
-              Mark as Paid
-            </Button>
+          <TableCell>
+            {!paymentObj?.payment_status ? (
+              <Button
+                variant={"outline"}
+                onClick={() => handleUpdatePaymentStatus(paymentObj)}
+              >
+                PAID
+              </Button>
+            ) : (
+              <Button
+                variant={"outline"}
+                onClick={() => handleUpdatePaymentStatus(paymentObj)}
+              >
+                UNPAID
+              </Button>
+            )}
           </TableCell>
         </TableRow>
       );

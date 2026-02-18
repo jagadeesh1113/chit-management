@@ -45,7 +45,6 @@ export const useFetchChitPayments = (month_id: string) => {
       return;
     }
     try {
-      console.trace("Fetching chit payments");
       dispatch({
         type: "SET_LOADING",
         data: true,
