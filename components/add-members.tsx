@@ -24,7 +24,7 @@ import {
   CheckIcon,
 } from "lucide-react";
 
-// ── Contact Picker API types ─────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface DeviceContact {
   name?: string[];
   tel?: string[];
@@ -42,12 +42,24 @@ const newRow = (name = "", mobile = ""): MemberRow => ({
   mobile,
 });
 
-const isContactsSupported =
-  typeof window !== "undefined" &&
-  "contacts" in navigator &&
-  "ContactsManager" in window;
+// ── Contact Picker detection ──────────────────────────────────────────────────
+// iOS Safari PWA exposes navigator.contacts but NOT window.ContactsManager.
+// The only reliable cross-platform check is whether navigator.contacts.select
+// is actually a callable function. Must run after mount (not at module level)
+// because SSR and Next.js pre-rendering have no navigator at all.
+const checkContactsSupported = (): boolean => {
+  try {
+    return (
+      typeof navigator !== "undefined" &&
+      "contacts" in navigator &&
+      typeof (navigator as any).contacts?.select === "function"
+    );
+  } catch {
+    return false;
+  }
+};
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 export const AddMembers = ({
   chitId,
   refetch,
@@ -60,9 +72,17 @@ export const AddMembers = ({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [pickingContacts, setPickingContacts] = React.useState(false);
 
-  // Single source of truth — always a list of rows (starts with one empty row)
-  const [rows, setRows] = React.useState<MemberRow[]>([newRow()]);
+  // Initialise to false; flip to true after mount once we can safely read navigator.
+  // This is the key fix for iOS Safari PWA — the API is only available client-side
+  // after hydration, and window.ContactsManager is absent even when the API works.
+  const [isContactsSupported, setIsContactsSupported] = React.useState(false);
 
+  React.useEffect(() => {
+    setIsContactsSupported(checkContactsSupported());
+  }, []);
+
+  // Single list of rows — shared source of truth for both manual and picked contacts
+  const [rows, setRows] = React.useState<MemberRow[]>([newRow()]);
   const isMulti = rows.length > 1;
 
   const resetForm = () => {
@@ -75,7 +95,7 @@ export const AddMembers = ({
     if (!open) resetForm();
   };
 
-  // ── Row helpers ──────────────────────────────────────────────────────────
+  // ── Row helpers ───────────────────────────────────────────────────────────
   const addEmptyRow = () => setRows((prev) => [...prev, newRow()]);
 
   const removeRow = (id: string) =>
@@ -88,19 +108,19 @@ export const AddMembers = ({
     id: string,
     field: keyof Omit<MemberRow, "id">,
     value: string,
-  ) =>
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
-    );
+  ) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
 
-  // ── Contact Picker API ───────────────────────────────────────────────────
+  // ── Contact Picker ────────────────────────────────────────────────────────
+  // Must be called directly from a user-gesture handler (onClick).
+  // iOS Safari rejects the promise if there is any async gap before .select().
   const handlePickContacts = async () => {
-    if (!isContactsSupported) return;
     setPickingContacts(true);
     try {
-      const contacts: DeviceContact[] = await (
-        navigator as any
-      ).contacts.select(["name", "tel"], { multiple: true });
+      const contacts: DeviceContact[] = await (navigator as any).contacts.select(
+        ["name", "tel"],
+        { multiple: true },
+      );
+
       if (!contacts || contacts.length === 0) return;
 
       const mapped: MemberRow[] = contacts
@@ -113,9 +133,7 @@ export const AddMembers = ({
         .filter((r) => r.name || r.mobile);
 
       setRows((prev) => {
-        // Remove trailing empty rows before merging
         const cleaned = prev.filter((r) => r.name.trim() || r.mobile.trim());
-        // Deduplicate by mobile
         const existingMobiles = new Set(cleaned.map((r) => r.mobile));
         const fresh = mapped.filter((r) => !existingMobiles.has(r.mobile));
         const merged = [...cleaned, ...fresh];
@@ -130,18 +148,7 @@ export const AddMembers = ({
     }
   };
 
-  // ── Submit ───────────────────────────────────────────────────────────────
-  const addMembers = async (members: { name: string; mobile: string }[]) => {
-    const res = await fetch("/api/members", {
-      method: "POST",
-      body: JSON.stringify({
-        members: members,
-        chit_id: chitId,
-      }),
-    });
-    return res.json();
-  };
-
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -154,12 +161,18 @@ export const AddMembers = ({
 
     setLoading(true);
     try {
-      const data = await addMembers(valid);
+      const res = await fetch("/api/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          members: valid.map((r) => ({ name: r.name.trim(), mobile: r.mobile.trim() })),
+          chit_id: chitId,
+        }),
+      });
+      const data = await res.json();
       if (data.success) {
         toast.success(
-          valid.length === 1
-            ? "Member added successfully"
-            : `${valid.length} members added`,
+          valid.length === 1 ? "Member added successfully" : `${valid.length} members added`,
           { position: "top-right" },
         );
         setIsDialogOpen(false);
@@ -175,7 +188,7 @@ export const AddMembers = ({
     }
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -187,6 +200,7 @@ export const AddMembers = ({
 
       <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-xl p-0 gap-0">
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[90dvh]">
+
           {/* Fixed header */}
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
             <DialogTitle className="text-base">Add Members</DialogTitle>
@@ -199,7 +213,8 @@ export const AddMembers = ({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-            {/* Contact Picker button */}
+
+            {/* Contact Picker button — only rendered after mount when API confirmed */}
             {isContactsSupported && (
               <button
                 type="button"
@@ -212,9 +227,7 @@ export const AddMembers = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium leading-tight">
-                    {pickingContacts
-                      ? "Opening contacts…"
-                      : "Pick from contacts"}
+                    {pickingContacts ? "Opening contacts…" : "Pick from contacts"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Select one or multiple contacts at once
@@ -227,9 +240,7 @@ export const AddMembers = ({
             {isContactsSupported && (
               <div className="flex items-center gap-3">
                 <div className="flex-1 border-t border-border" />
-                <span className="text-xs text-muted-foreground">
-                  or enter manually
-                </span>
+                <span className="text-xs text-muted-foreground">or enter manually</span>
                 <div className="flex-1 border-t border-border" />
               </div>
             )}
@@ -241,7 +252,6 @@ export const AddMembers = ({
                   key={row.id}
                   className="rounded-xl border border-border bg-card p-3 space-y-2"
                 >
-                  {/* Row header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -262,15 +272,12 @@ export const AddMembers = ({
                     )}
                   </div>
 
-                  {/* Fields */}
                   <div className="space-y-1.5">
                     <div className="relative">
                       <UserIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                       <Input
                         value={row.name}
-                        onChange={(e) =>
-                          updateRow(row.id, "name", e.target.value)
-                        }
+                        onChange={(e) => updateRow(row.id, "name", e.target.value)}
                         placeholder="Full name"
                         required
                         className="pl-8 h-9 text-sm"
@@ -280,9 +287,7 @@ export const AddMembers = ({
                       <PhoneIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                       <Input
                         value={row.mobile}
-                        onChange={(e) =>
-                          updateRow(row.id, "mobile", e.target.value)
-                        }
+                        onChange={(e) => updateRow(row.id, "mobile", e.target.value)}
                         placeholder="Mobile number"
                         inputMode="numeric"
                         className="pl-8 h-9 text-sm"
@@ -335,11 +340,7 @@ export const AddMembers = ({
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button
-                  type="submit"
-                  className="flex-1 sm:flex-none"
-                  disabled={loading}
-                >
+                <Button type="submit" className="flex-1 sm:flex-none" disabled={loading}>
                   {loading ? "Adding…" : "Add Member"}
                 </Button>
               </>
