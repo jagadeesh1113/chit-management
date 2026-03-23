@@ -24,10 +24,11 @@ import {
   PlusIcon,
   CalendarIcon,
   TagIcon,
-  IndianRupeeIcon,
   UserIcon,
   InfoIcon,
+  BanknoteIcon,
 } from "lucide-react";
+import { getNumericAmountWithoutCurrency } from "@/lib/utils";
 
 export const AddMonths = ({
   chitId,
@@ -117,10 +118,9 @@ export const AddMonths = ({
     formData.append("auction_user", auctionUser);
 
     // Strip currency formatting before sending
-    const rawAmount = (formData.get("auction_amount") as string)?.replace(
-      /[₹,\s]/g,
-      "",
-    );
+    const rawAmount = getNumericAmountWithoutCurrency(
+      formData.get("auction_amount") as string,
+    )?.toString();
     formData.set("auction_amount", rawAmount);
 
     setLoading(true);
@@ -137,9 +137,7 @@ export const AddMonths = ({
         await addPaymentsForMembers({
           auctionAmt: auctionDetails?.auction_amount,
           month_id: auctionDetails?.id,
-          auction_member_obj: members.find(
-            (m: any) => m.id === auctionUser,
-          ),
+          auction_member_obj: members.find((m: any) => m.id === auctionUser),
         });
         toast.success("Month added successfully", { position: "top-right" });
         setIsDialogOpen(false);
@@ -166,10 +164,7 @@ export const AddMonths = ({
       </DialogTrigger>
 
       <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-xl p-0 gap-0">
-        <form
-          onSubmit={handleAddMonth}
-          className="flex flex-col max-h-[90dvh]"
-        >
+        <form onSubmit={handleAddMonth} className="flex flex-col max-h-[90dvh]">
           {/* Fixed header */}
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
             <DialogTitle className="text-base">Add Month / Auction</DialogTitle>
@@ -180,7 +175,6 @@ export const AddMonths = ({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-
             {/* Month name */}
             <div className="space-y-1.5">
               <Label
@@ -231,7 +225,7 @@ export const AddMonths = ({
                 Auction amount
               </Label>
               <div className="relative">
-                <IndianRupeeIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                <BanknoteIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <CurrencyInput
                   id="auction_amount"
                   name="auction_amount"
@@ -330,11 +324,7 @@ function PreviewRow({
     <div className="flex items-center justify-between gap-2">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
-        className={
-          highlight
-            ? "text-sm font-semibold"
-            : "text-xs font-medium"
-        }
+        className={highlight ? "text-sm font-semibold" : "text-xs font-medium"}
       >
         {value}
       </span>

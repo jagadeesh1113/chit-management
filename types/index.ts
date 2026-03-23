@@ -38,15 +38,16 @@ export interface ChitMonth {
 export type PaymentType = "cash" | "cheque" | "bank_transfer";
 
 export interface Payment {
-  payment_id: string;
+  member_id: string;
   name: string;
   mobile: string;
-  amount: number;
-  payment_status: boolean;
-  payment_date: string | null;
-  payment_type: PaymentType | null;
-  member_id: string;
-  month_id: string;
+  payments: {
+    amount: number;
+    payment_date: string | null;
+    payment_type: PaymentType | null;
+    month_id: string;
+    payment_id: string;
+  }[];
 }
 
 // ── Context shapes ────────────────────────────────────────────────────────────

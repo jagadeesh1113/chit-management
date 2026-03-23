@@ -16,21 +16,11 @@ import { Skeleton } from "./ui/skeleton";
 import React from "react";
 import { toast } from "sonner";
 import { CheckIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getMonthlyPaymentAmount } from "@/lib/utils";
 import type { Payment, ChitMonth, Chit } from "@/types";
-import { PAYMENT_TYPES } from "@/constants";
 import { MarkPaidForm } from "./mark-paid-form";
 
 // ── Formatters ───────────────────────────────────────────────────────────────
-const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
 const fmt = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
@@ -140,6 +130,10 @@ export const ChitPaymentsTable = ({
   const [error, setError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
+  const monthlyPaymentAmount = React.useMemo(() => {
+    return getMonthlyPaymentAmount({ month, chit });
+  }, [month, chit]);
+
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
@@ -150,7 +144,7 @@ export const ChitPaymentsTable = ({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          payment_id: paymentObj.payment_id,
+          payment_id: paymentObj.member_id,
           payment_status: false,
           payment_date: null,
           payment_type: null,
@@ -202,12 +196,17 @@ export const ChitPaymentsTable = ({
             .toUpperCase()
             .slice(0, 2);
 
-          const isPaid = paymentObj.payment_status;
-          const isExpanded = expandedId === paymentObj.payment_id;
+          const paidAmount = paymentObj?.payments?.reduce(
+            (acc, paymentDetails) => (acc += paymentDetails?.amount),
+            0,
+          );
+
+          const isPaid = paidAmount === monthlyPaymentAmount;
+          const isExpanded = expandedId === paymentObj.member_id;
 
           return (
             <div
-              key={paymentObj.payment_id}
+              key={paymentObj.member_id}
               className={cn(
                 "rounded-xl border bg-card overflow-hidden transition-colors",
                 isPaid
@@ -234,7 +233,7 @@ export const ChitPaymentsTable = ({
                   <p className="text-sm font-medium truncate leading-tight">
                     {paymentObj.name}
                   </p>
-                  {isPaid && paymentObj.payment_type && (
+                  {/* {isPaid && paymentObj.payment_type && (
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {
                         PAYMENT_TYPES.find(
@@ -252,15 +251,15 @@ export const ChitPaymentsTable = ({
                         </span>
                       )}
                     </p>
-                  )}
+                  )} */}
                 </div>
 
                 {/* Amount + status */}
                 <div className="shrink-0 text-right">
                   <p className="text-sm font-semibold tabular-nums">
-                    {fmt.format(paymentObj.amount)}
+                    {fmt.format(monthlyPaymentAmount)}
                   </p>
-                  <PaymentStatus status={paymentObj.payment_status} />
+                  <PaymentStatus status={isPaid} />
                 </div>
               </div>
 
@@ -274,7 +273,7 @@ export const ChitPaymentsTable = ({
                       openWhatsApp(
                         paymentObj.mobile,
                         paymentObj.name,
-                        paymentObj.amount,
+                        monthlyPaymentAmount,
                         month,
                         chit,
                       )
@@ -288,7 +287,7 @@ export const ChitPaymentsTable = ({
                   {!isExpanded ? (
                     <button
                       type="button"
-                      onClick={() => toggleExpand(paymentObj.payment_id)}
+                      onClick={() => toggleExpand(paymentObj.member_id)}
                       className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                     >
                       <CheckIcon className="size-3.5" />
@@ -300,6 +299,8 @@ export const ChitPaymentsTable = ({
                       refetch={refetch}
                       onCancel={() => setExpandedId(null)}
                       setExpandedId={setExpandedId}
+                      chit={chit}
+                      month={month}
                     />
                   )}
                 </div>
@@ -341,87 +342,93 @@ export const ChitPaymentsTable = ({
           {loading ? (
             <TableSkletonRows rowsCount={5} colsCount={6} />
           ) : (
-            values?.map((paymentObj) => (
-              <React.Fragment key={paymentObj.payment_id}>
-                <TableRow>
-                  <TableCell className="font-medium">
-                    {paymentObj.name}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {fmt.format(paymentObj.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <PaymentStatus status={paymentObj.payment_status} />
-                      {paymentObj?.payment_status ? (
-                        <>
-                          {paymentObj.payment_type ? (
-                            <div>
-                              {
-                                PAYMENT_TYPES.find(
-                                  (t) => t.value === paymentObj.payment_type,
-                                )?.icon
-                              }{" "}
-                              {
-                                PAYMENT_TYPES.find(
-                                  (t) => t.value === paymentObj.payment_type,
-                                )?.label
-                              }
-                            </div>
-                          ) : null}
-                          {paymentObj.payment_date ? (
-                            <div>{formatDate(paymentObj.payment_date)}</div>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {paymentObj.payment_status ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarkUnpaid(paymentObj)}
-                        >
-                          Mark Unpaid
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            className="bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 gap-1.5"
-                            onClick={() =>
-                              openWhatsApp(
-                                paymentObj.mobile,
-                                paymentObj.name,
-                                paymentObj.amount,
-                                month,
-                                chit,
-                              )
-                            }
-                          >
-                            <WhatsAppIcon className="size-3.5" />
-                            Remind
-                          </Button>
+            values?.map((paymentObj) => {
+              const paidAmount = paymentObj?.payments?.reduce(
+                (acc, paymentDetails) => (acc += paymentDetails?.amount),
+                0,
+              );
+
+              const isPaid = paidAmount === monthlyPaymentAmount;
+              return (
+                <React.Fragment key={paymentObj.member_id}>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      {paymentObj.name}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {fmt.format(monthlyPaymentAmount)}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <PaymentStatus status={isPaid} />
+                        {/* {isPaid ? (
+                          <>
+                            {paymentObj.payment_type ? (
+                              <div>
+                                {
+                                  PAYMENT_TYPES.find(
+                                    (t) => t.value === paymentObj.payment_type,
+                                  )?.icon
+                                }{" "}
+                                {
+                                  PAYMENT_TYPES.find(
+                                    (t) => t.value === paymentObj.payment_type,
+                                  )?.label
+                                }
+                              </div>
+                            ) : null}
+                            {paymentObj.payment_date ? (
+                              <div>{formatDate(paymentObj.payment_date)}</div>
+                            ) : null}
+                          </>
+                        ) : null} */}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {isPaid ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toggleExpand(paymentObj.payment_id)}
+                            onClick={() => handleMarkUnpaid(paymentObj)}
                           >
-                            {expandedId === paymentObj.payment_id
-                              ? "Cancel"
-                              : "Mark Paid"}
+                            Mark Unpaid
                           </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 gap-1.5"
+                              onClick={() =>
+                                openWhatsApp(
+                                  paymentObj.mobile,
+                                  paymentObj.name,
+                                  monthlyPaymentAmount,
+                                  month,
+                                  chit,
+                                )
+                              }
+                            >
+                              <WhatsAppIcon className="size-3.5" />
+                              Remind
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleExpand(paymentObj.member_id)}
+                            >
+                              {expandedId === paymentObj.member_id
+                                ? "Cancel"
+                                : "Mark Paid"}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
 
-                {/* Inline form row */}
-                {!paymentObj.payment_status &&
-                  expandedId === paymentObj.payment_id && (
+                  {/* Inline form row */}
+                  {!isPaid && expandedId === paymentObj.member_id && (
                     <TableRow>
                       <TableCell colSpan={6} className="py-2 px-4 bg-muted/20">
                         <MarkPaidForm
@@ -429,12 +436,15 @@ export const ChitPaymentsTable = ({
                           refetch={refetch}
                           onCancel={() => setExpandedId(null)}
                           setExpandedId={setExpandedId}
+                          chit={chit}
+                          month={month}
                         />
                       </TableCell>
                     </TableRow>
                   )}
-              </React.Fragment>
-            ))
+                </React.Fragment>
+              );
+            })
           )}
         </TableBody>
       </Table>

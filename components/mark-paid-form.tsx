@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PAYMENT_TYPES } from "@/constants";
-import { Payment, PaymentType } from "@/types";
+import { Chit, ChitMonth, Payment, PaymentType } from "@/types";
 import {
   BanknoteIcon,
   CalendarIcon,
@@ -10,42 +10,56 @@ import {
 } from "lucide-react";
 import React from "react";
 import { Input } from "./ui/input";
-import { cn } from "@/lib/utils";
+import {
+  cn,
+  getMonthlyPaymentAmount,
+  getNumericAmountWithoutCurrency,
+} from "@/lib/utils";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
+import CurrencyInput from "react-currency-input-field";
 
 export const MarkPaidForm = ({
   onCancel,
   refetch,
   paymentObj,
   setExpandedId,
+  chit,
+  month,
 }: {
   onCancel: () => void;
   refetch?: () => void;
   paymentObj: Payment;
   setExpandedId: (_id: string | null) => void;
+  month?: ChitMonth | null;
+  chit?: Chit | null;
 }) => {
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = React.useState(today);
   const [type, setType] = React.useState<PaymentType>("cash");
+  const [amount, setAmount] = React.useState<string>(() =>
+    getMonthlyPaymentAmount({ month, chit })?.toString(),
+  );
   const [typeOpen, setTypeOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const selectedType = PAYMENT_TYPES.find((t) => t.value === type)!;
 
-  const handleMarkPaid = async (date: string, type: PaymentType) => {
+  const handleMarkPaid = async () => {
     setSubmitting(true);
     setError(null);
     try {
       const res = await fetch("/api/payments", {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          payment_id: paymentObj.payment_id,
-          payment_status: true,
+          member_id: paymentObj.member_id,
+          chit_id: chit?.id,
+          month_id: month?.id,
           payment_date: date,
           payment_type: type,
+          amount: getNumericAmountWithoutCurrency(amount),
         }),
       });
       const data = await res.json();
@@ -65,6 +79,28 @@ export const MarkPaidForm = ({
 
   return (
     <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3 w-full">
+      {/* Amount */}
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Amount paid
+        </label>
+        <div className="relative">
+          <BanknoteIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none z-10" />
+          <CurrencyInput
+            value={amount}
+            onValueChange={(val) => setAmount(val ?? "")}
+            intlConfig={{ locale: "en-IN", currency: "INR" }}
+            prefix={""}
+            customInput={Input}
+            className="pl-8 h-8 text-sm"
+            onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+            onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+            onTouchStart={(e: React.TouchEvent) => e.stopPropagation()}
+            required
+          />
+        </div>
+      </div>
+
       {/* Date */}
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -146,7 +182,7 @@ export const MarkPaidForm = ({
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-500 px-4 pt-2">{error}</p>}
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       {/* Action buttons */}
       <div className="flex gap-2 pt-1">
@@ -155,7 +191,7 @@ export const MarkPaidForm = ({
           size="sm"
           className="flex-1 h-8 gap-1 text-xs"
           disabled={submitting || !date}
-          onClick={() => handleMarkPaid(date, type)}
+          onClick={handleMarkPaid}
         >
           <CheckIcon className="size-3.5" />
           {submitting ? "Saving…" : "Confirm"}

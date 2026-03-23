@@ -28,7 +28,7 @@ const chitPaymentsReducer = (
   }
 };
 
-export const useFetchChitPayments = (month_id: string) => {
+export const useFetchChitPayments = (month_id: string, chit_id: string) => {
   const [state, dispatch] = React.useReducer(chitPaymentsReducer, {
     loading: true,
     values: [],
@@ -39,7 +39,9 @@ export const useFetchChitPayments = (month_id: string) => {
     if (!month_id) return;
     dispatch({ type: "SET_LOADING", data: true });
     try {
-      const res = await fetch(`/api/payments?monthId=${month_id}`);
+      const res = await fetch(
+        `/api/payments?monthId=${month_id}&chitId=${chit_id}`,
+      );
       const data = await res.json();
       if (data.error) {
         dispatch({ type: "SET_ERROR", data: data.error });

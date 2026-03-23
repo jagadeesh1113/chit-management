@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -24,18 +23,20 @@ export const MonthlyPaymentsDrawer = ({
   isOpen,
   onOpenChange,
   month,
+  chit_id,
 }: {
   month_name: string;
   month_id: string;
   isOpen: boolean;
   onOpenChange: (value: boolean) => void;
   month?: ChitMonth | null;
+  chit_id: string;
 }) => {
-  const { loading, values, refetch } = useFetchChitPayments(month_id);
+  const { loading, values, refetch } = useFetchChitPayments(month_id, chit_id);
   const { chitDetails } = React.useContext(ChitContext);
 
   const paidCount =
-    values?.filter((p: Payment) => p.payment_status).length ?? 0;
+    values?.filter((p: Payment) => !!p.payments?.length).length ?? 0;
   const totalCount = values?.length ?? 0;
 
   return (

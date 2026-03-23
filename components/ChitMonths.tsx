@@ -274,6 +274,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         isOpen={isDrawerOpen}
         onOpenChange={setIsDrawerOpen}
         month={selectedMonth}
+        chit_id={chitId}
       />
     </div>
   );
