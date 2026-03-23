@@ -28,6 +28,7 @@ import {
   CalendarIcon,
   InfoIcon,
 } from "lucide-react";
+import { IconInput } from "./ui/icon-input";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -56,17 +57,6 @@ function FieldLabel({
   );
 }
 
-function IconInput({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="relative">
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none flex items-center">
-        {icon}
-      </span>
-      {children}
-    </div>
-  );
-}
-
 function PreviewRow({
   label,
   value,
@@ -79,7 +69,9 @@ function PreviewRow({
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={highlight ? "text-sm font-semibold" : "text-xs font-medium"}>
+      <span
+        className={highlight ? "text-sm font-semibold" : "text-xs font-medium"}
+      >
         {value}
       </span>
     </div>
@@ -104,8 +96,12 @@ export function AddOrUpdateChit({
 
   // Live preview state
   const [amount, setAmount] = useState<string>(selectedChitObj?.amount ?? "");
-  const [charges, setCharges] = useState<string>(selectedChitObj?.charges ?? "");
-  const [members, setMembers] = useState<string>(selectedChitObj?.members ?? "");
+  const [charges, setCharges] = useState<string>(
+    selectedChitObj?.charges ?? "",
+  );
+  const [members, setMembers] = useState<string>(
+    selectedChitObj?.members ?? "",
+  );
   const [months, setMonths] = useState<string>(selectedChitObj?.months ?? "");
 
   const { user } = useAuth();
@@ -126,14 +122,14 @@ export function AddOrUpdateChit({
   }, [editMode]);
 
   // ── Preview calculations ───────────────────────────────────────────────────
-  const numAmount  = Number(stripCurrency(String(amount)))  || 0;
+  const numAmount = Number(stripCurrency(String(amount))) || 0;
   const numCharges = Number(stripCurrency(String(charges))) || 0;
   const numMembers = Number(members) || 0;
-  const numMonths  = Number(months)  || 0;
+  const numMonths = Number(months) || 0;
 
   const monthlyContribution = numMembers > 0 ? numAmount / numMembers : 0;
-  const totalPayout         = numAmount > 0 ? numAmount : 0;
-  const showPreview         = numAmount > 0 && numMembers > 0 && numMonths > 0;
+  const totalPayout = numAmount > 0 ? numAmount : 0;
+  const showPreview = numAmount > 0 && numMembers > 0 && numMonths > 0;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const resetLiveState = () => {
@@ -177,7 +173,7 @@ export function AddOrUpdateChit({
 
   const buildFormData = (event: React.FormEvent<HTMLFormElement>) => {
     const fd = new FormData(event.currentTarget);
-    fd.set("amount",  stripCurrency(fd.get("amount")  as string));
+    fd.set("amount", stripCurrency(fd.get("amount") as string));
     fd.set("charges", stripCurrency(fd.get("charges") as string));
     return fd;
   };
@@ -188,7 +184,7 @@ export function AddOrUpdateChit({
     setIsLoading(true);
     setError(null);
     try {
-      const res  = await fetch("/api/chits", { method: "POST", body: formData });
+      const res = await fetch("/api/chits", { method: "POST", body: formData });
       const data = await res.json();
       if (data.success) {
         await addChitOwnerAsMember({ chitId: data?.values?.[0]?.id });
@@ -211,7 +207,7 @@ export function AddOrUpdateChit({
     setIsLoading(true);
     setError(null);
     try {
-      const res  = await fetch("/api/chits", { method: "PUT", body: formData });
+      const res = await fetch("/api/chits", { method: "PUT", body: formData });
       const data = await res.json();
       if (data.success) {
         toast.success("Chit updated successfully", { position: "top-right" });
@@ -257,7 +253,6 @@ export function AddOrUpdateChit({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
-
             {/* Name */}
             <div className="space-y-1.5">
               <FieldLabel htmlFor="name">Chit name</FieldLabel>
@@ -368,11 +363,20 @@ export function AddOrUpdateChit({
                   Chit summary
                 </div>
                 <div className="space-y-2">
-                  <PreviewRow label="Total chit value"       value={fmt.format(totalPayout)} />
-                  <PreviewRow label="Number of members"      value={`${numMembers} members`} />
-                  <PreviewRow label="Duration"               value={`${numMonths} months`} />
+                  <PreviewRow
+                    label="Total chit value"
+                    value={fmt.format(totalPayout)}
+                  />
+                  <PreviewRow
+                    label="Number of members"
+                    value={`${numMembers} members`}
+                  />
+                  <PreviewRow label="Duration" value={`${numMonths} months`} />
                   {numCharges > 0 && (
-                    <PreviewRow label="Charges / month"      value={fmt.format(numCharges)} />
+                    <PreviewRow
+                      label="Charges / month"
+                      value={fmt.format(numCharges)}
+                    />
                   )}
                   <div className="border-t border-border pt-2">
                     <PreviewRow
@@ -395,7 +399,10 @@ export function AddOrUpdateChit({
                 type="button"
                 variant="outline"
                 className="flex-1 sm:flex-none"
-                onClick={() => { onReset?.(); if (!editMode) resetLiveState(); }}
+                onClick={() => {
+                  onReset?.();
+                  if (!editMode) resetLiveState();
+                }}
               >
                 Cancel
               </Button>
@@ -406,8 +413,12 @@ export function AddOrUpdateChit({
               className="flex-1 sm:flex-none"
             >
               {isLoading
-                ? editMode ? "Updating…" : "Adding…"
-                : editMode ? "Update Chit" : "Add Chit"}
+                ? editMode
+                  ? "Updating…"
+                  : "Adding…"
+                : editMode
+                  ? "Update Chit"
+                  : "Add Chit"}
             </Button>
           </DialogFooter>
         </form>
