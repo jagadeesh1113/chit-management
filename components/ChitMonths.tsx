@@ -12,20 +12,24 @@ import { useFetchChitMonths } from "@/hooks/use-fetch-chit-months";
 import { AddMonths } from "./add-months";
 import React from "react";
 import { MemberContext } from "@/context/MemberContext";
-import { MonthlyPaymentsDialog } from "./MonthlyPaymentsDialog";
+import { MonthlyPaymentsDrawer } from "./MonthlyPaymentsDrawer";
 import { Button } from "./ui/button";
 import { CalendarIcon, EyeIcon } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
-  const { loading, values, refetch: fetchChitMonths } = useFetchChitMonths(chitId);
+  const {
+    loading,
+    values,
+    refetch: fetchChitMonths,
+  } = useFetchChitMonths(chitId);
   const { values: members } = React.useContext(MemberContext);
   const [selectedMonth, setSelectedMonth] = React.useState<null | any>(null);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
 
   const handleSelectMonthlyPayments = (monthObj: any) => {
     setSelectedMonth(monthObj);
-    setIsDialogOpen(true);
+    setIsDrawerOpen(true);
   };
 
   // ── Mobile cards ──────────────────────────────────────────────────────
@@ -34,7 +38,10 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
       return (
         <div className="space-y-2 sm:hidden">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-3 space-y-2">
+            <div
+              key={i}
+              className="rounded-xl border border-border bg-card p-3 space-y-2"
+            >
               <Skeleton className="h-4 w-1/4" />
               <Skeleton className="h-3 w-2/5" />
             </div>
@@ -46,10 +53,13 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
       <div className="space-y-2 sm:hidden">
         {values?.map((auctionObj: any) => {
           const memberDetails: any = members?.find(
-            (m: any) => m?.id === auctionObj?.auction_user
+            (m: any) => m?.id === auctionObj?.auction_user,
           );
           return (
-            <div key={auctionObj.id} className="rounded-xl border border-border bg-card p-3">
+            <div
+              key={auctionObj.id}
+              className="rounded-xl border border-border bg-card p-3"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm">{auctionObj?.name}</p>
@@ -59,7 +69,9 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                       {auctionObj?.auction_date ?? "—"}
                     </span>
                     <span>₹{auctionObj?.auction_amount ?? "—"}</span>
-                    {memberDetails?.name && <span>Winner: {memberDetails.name}</span>}
+                    {memberDetails?.name && (
+                      <span>Auction User: {memberDetails.name}</span>
+                    )}
                     <span>{auctionObj?.payments_count} / 20 paid</span>
                   </div>
                 </div>
@@ -88,7 +100,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             <TableHead className="font-medium">Name</TableHead>
             <TableHead className="font-medium">Auction Date</TableHead>
             <TableHead className="font-medium">Amount</TableHead>
-            <TableHead className="font-medium">Winner</TableHead>
+            <TableHead className="font-medium">Auction User</TableHead>
             <TableHead className="font-medium">Payments</TableHead>
             <TableHead className="text-right font-medium">Actions</TableHead>
           </TableRow>
@@ -99,11 +111,13 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
           ) : (
             values?.map((auctionObj: any) => {
               const memberDetails: any = members?.find(
-                (m: any) => m?.id === auctionObj?.auction_user
+                (m: any) => m?.id === auctionObj?.auction_user,
               );
               return (
                 <TableRow key={auctionObj.id}>
-                  <TableCell className="font-medium">{auctionObj?.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {auctionObj?.name}
+                  </TableCell>
                   <TableCell>{auctionObj?.auction_date}</TableCell>
                   <TableCell>{auctionObj?.auction_amount}</TableCell>
                   <TableCell>{memberDetails?.name ?? "—"}</TableCell>
@@ -135,11 +149,11 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
       </div>
       <MobileList />
       <DesktopTable />
-      <MonthlyPaymentsDialog
+      <MonthlyPaymentsDrawer
         month_name={selectedMonth?.name}
         month_id={selectedMonth?.id}
-        isDialogOpen={isDialogOpen}
-        onChangeDialogOpen={setIsDialogOpen}
+        isOpen={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
       />
     </div>
   );

@@ -55,14 +55,16 @@ export async function PUT(req: Request) {
   try {
     const supabase = await createClient();
 
-    const { payment_id, payment_status } = await req.json();
+    const { payment_id, payment_status, payment_date, payment_type } =
+      await req.json();
 
-    // Store chunk with embedding in database
+    const updatePayload: Record<string, any> = { payment_status };
+    if (payment_date !== undefined) updatePayload.payment_date = payment_date;
+    if (payment_type !== undefined) updatePayload.payment_type = payment_type;
+
     const { error, data } = await supabase
       .from("payments")
-      .update({
-        payment_status,
-      })
+      .update(updatePayload)
       .eq("id", payment_id)
       .select();
 
@@ -106,7 +108,7 @@ export async function GET(req: Request) {
     const supabase = await createClient();
 
     const { data: results, error } = await supabase.rpc(
-      "get_chit_payments_v10",
+      "get_chit_payments_v11",
       {
         selected_month_id: monthId,
       },
