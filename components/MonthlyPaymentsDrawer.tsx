@@ -10,24 +10,29 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "./ui/drawer";
+import React from "react";
 import { Button } from "./ui/button";
 import { ChitPaymentsTable } from "./ChitPaymentsTable";
 import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
 import { XIcon } from "lucide-react";
-import type { Payment } from "@/types";
+import type { Payment, ChitMonth, Chit } from "@/types";
+import { ChitContext } from "@/context/ChitContext";
 
 export const MonthlyPaymentsDrawer = ({
   month_name,
   month_id,
   isOpen,
   onOpenChange,
+  month,
 }: {
   month_name: string;
   month_id: string;
   isOpen: boolean;
   onOpenChange: (value: boolean) => void;
+  month?: ChitMonth | null;
 }) => {
   const { loading, values, refetch } = useFetchChitPayments(month_id);
+  const { chitDetails } = React.useContext(ChitContext);
 
   const paidCount =
     values?.filter((p: Payment) => p.payment_status).length ?? 0;
@@ -77,6 +82,8 @@ export const MonthlyPaymentsDrawer = ({
             loading={loading}
             values={values}
             refetch={refetch}
+            month={month}
+            chit={chitDetails as Chit | null}
           />
         </div>
 

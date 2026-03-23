@@ -76,6 +76,9 @@ export const MarkPaidForm = ({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             required
             className="pl-8 h-8 text-sm"
           />
