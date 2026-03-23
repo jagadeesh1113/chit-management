@@ -11,7 +11,7 @@ import {
 import { Button } from "./ui/button";
 import { ChitPaymentsTable } from "./ChitPaymentsTable";
 import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
-import { MessageCircle } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export const MonthlyPaymentsDialog = ({
@@ -28,50 +28,42 @@ export const MonthlyPaymentsDialog = ({
   const { loading, values, refetch } = useFetchChitPayments(month_id);
 
   const handleSendMessage = async () => {
-    if (loading) {
-      return;
-    }
+    if (loading) return;
     const payment_reminder_recipients = values?.filter(
       (paymentObj: any) => !paymentObj?.payment_status,
     );
     const res = await fetch("/api/send-message", {
       method: "POST",
-      body: JSON.stringify({
-        payment_reminder_recipients,
-      }),
+      body: JSON.stringify({ payment_reminder_recipients }),
     });
-
     await res.json();
-    toast.success("Payment Reminder sent successfully", {
-      position: "top-right",
-    });
+    toast.success("Payment reminder sent successfully", { position: "top-right" });
   };
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={onChangeDialogOpen}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Chit Monthly Payments</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl rounded-xl p-0 gap-0">
+        <DialogHeader className="px-4 pt-5 pb-3 border-b border-border">
+          <DialogTitle className="text-base">Monthly Payments</DialogTitle>
+          <DialogDescription className="text-xs">
             Member payments for {month_name}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-end px-4">
-          <Button variant={"secondary"} onClick={handleSendMessage}>
-            <MessageCircle />
-            Send Message
+
+        <div className="flex justify-end px-4 py-2.5 border-b border-border bg-muted/30">
+          <Button variant="secondary" size="sm" onClick={handleSendMessage} className="gap-1.5 text-xs">
+            <MessageCircleIcon className="size-3.5" />
+            Send Reminder
           </Button>
         </div>
-        <div className="no-scrollbar overflow-y-auto px-4 h-[50vh]">
-          <ChitPaymentsTable
-            loading={loading}
-            values={values}
-            refetch={refetch}
-          />
+
+        <div className="overflow-y-auto max-h-[55vh] px-0">
+          <ChitPaymentsTable loading={loading} values={values} refetch={refetch} />
         </div>
-        <DialogFooter>
+
+        <DialogFooter className="px-4 py-3 border-t border-border">
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto">Close</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

@@ -12,12 +12,10 @@ const ChitDetailsContainer = async ({
   const { id } = await params;
 
   return (
-    <div className="flex min-h-svh w-full p-6 md:p-10">
-      <div className="w-full">
-        <ChitProvider chitId={id}>
-          <ChitDetails id={id} />
-        </ChitProvider>
-      </div>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <ChitProvider chitId={id}>
+        <ChitDetails id={id} />
+      </ChitProvider>
     </div>
   );
 };
@@ -30,7 +28,13 @@ export default async function Page({
   return (
     <AuthProvider>
       <Navigation />
-      <Suspense fallback="loading chit details...">
+      <Suspense
+        fallback={
+          <div className="mx-auto max-w-5xl px-4 py-12 text-center text-sm text-muted-foreground">
+            Loading chit details…
+          </div>
+        }
+      >
         <ChitDetailsContainer params={params} />
       </Suspense>
     </AuthProvider>

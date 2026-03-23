@@ -23,8 +23,14 @@ export const Chits = () => {
   };
 
   return (
-    <div>
-      <div className="flex justify-end">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold sm:text-xl">My Chits</h1>
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {loading ? "Loading..." : `${values?.length ?? 0} chit${values?.length !== 1 ? "s" : ""}`}
+          </p>
+        </div>
         <AddOrUpdateChit
           refetch={refetch}
           selectedChitObj={selectedChitObj?.details}

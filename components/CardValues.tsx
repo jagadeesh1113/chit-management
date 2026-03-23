@@ -8,9 +8,9 @@ export const CardValues = ({
   value: string;
 }) => {
   return (
-    <div>
-      <Label className="text-sm text-gray-500">{label}</Label>
-      <div className="text-base font-semibold text-gray-900">{value}</div>
+    <div className="space-y-0.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="text-sm font-semibold">{value ?? "—"}</div>
     </div>
   );
 };

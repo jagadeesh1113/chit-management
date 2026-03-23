@@ -4,15 +4,11 @@ import { AuthProvider } from "@/context/AuthContext";
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <AuthProvider>
         <Navigation />
-        <main className="min-h-screen flex flex-col">
-          <div className="flex-1 w-full flex flex-col gap-5">
-            <div className="p-8">
-              <Chits />
-            </div>
-          </div>
+        <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+          <Chits />
         </main>
       </AuthProvider>
     </div>

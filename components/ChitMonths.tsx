@@ -14,15 +14,11 @@ import React from "react";
 import { MemberContext } from "@/context/MemberContext";
 import { MonthlyPaymentsDialog } from "./MonthlyPaymentsDialog";
 import { Button } from "./ui/button";
-import { ViewIcon } from "lucide-react";
+import { CalendarIcon, EyeIcon } from "lucide-react";
+import { Skeleton } from "./ui/skeleton";
 
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
-  const {
-    loading,
-    values,
-    refetch: fetchChitMonths,
-  } = useFetchChitMonths(chitId);
-
+  const { loading, values, refetch: fetchChitMonths } = useFetchChitMonths(chitId);
   const { values: members } = React.useContext(MemberContext);
   const [selectedMonth, setSelectedMonth] = React.useState<null | any>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -32,58 +28,113 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
     setIsDialogOpen(true);
   };
 
-  const renderTableRows = () => {
+  // ── Mobile cards ──────────────────────────────────────────────────────
+  const MobileList = () => {
     if (loading) {
-      return <TableSkletonRows rowsCount={5} colsCount={4} />;
-    }
-    return values?.map((auctionObj: any) => {
-      const memberDetails: any = members?.find(
-        (memberObj: any) => memberObj?.id === auctionObj?.auction_user,
-      );
       return (
-        <TableRow key={auctionObj.id}>
-          <TableCell className="font-medium">{auctionObj?.name}</TableCell>
-          <TableCell>{auctionObj?.auction_date}</TableCell>
-          <TableCell>{auctionObj?.auction_amount}</TableCell>
-          <TableCell>{memberDetails?.name ?? "-"}</TableCell>
-          <TableCell>{`${auctionObj?.payments_count} / 20`}</TableCell>
-          <TableCell className="text-right">
-            <Button
-              variant="outline"
-              size={"icon"}
-              onClick={() => handleSelectMonthlyPayments(auctionObj)}
-            >
-              <ViewIcon />
-            </Button>
-          </TableCell>
-        </TableRow>
+        <div className="space-y-2 sm:hidden">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-card p-3 space-y-2">
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-3 w-2/5" />
+            </div>
+          ))}
+        </div>
       );
-    });
+    }
+    return (
+      <div className="space-y-2 sm:hidden">
+        {values?.map((auctionObj: any) => {
+          const memberDetails: any = members?.find(
+            (m: any) => m?.id === auctionObj?.auction_user
+          );
+          return (
+            <div key={auctionObj.id} className="rounded-xl border border-border bg-card p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm">{auctionObj?.name}</p>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="size-3" />
+                      {auctionObj?.auction_date ?? "—"}
+                    </span>
+                    <span>₹{auctionObj?.auction_amount ?? "—"}</span>
+                    {memberDetails?.name && <span>Winner: {memberDetails.name}</span>}
+                    <span>{auctionObj?.payments_count} / 20 paid</span>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8 shrink-0"
+                  onClick={() => handleSelectMonthlyPayments(auctionObj)}
+                >
+                  <EyeIcon className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
+
+  // ── Desktop table ─────────────────────────────────────────────────────
+  const DesktopTable = () => (
+    <div className="hidden sm:block rounded-xl border border-border overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/40 hover:bg-muted/40">
+            <TableHead className="font-medium">Name</TableHead>
+            <TableHead className="font-medium">Auction Date</TableHead>
+            <TableHead className="font-medium">Amount</TableHead>
+            <TableHead className="font-medium">Winner</TableHead>
+            <TableHead className="font-medium">Payments</TableHead>
+            <TableHead className="text-right font-medium">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            <TableSkletonRows rowsCount={5} colsCount={6} />
+          ) : (
+            values?.map((auctionObj: any) => {
+              const memberDetails: any = members?.find(
+                (m: any) => m?.id === auctionObj?.auction_user
+              );
+              return (
+                <TableRow key={auctionObj.id}>
+                  <TableCell className="font-medium">{auctionObj?.name}</TableCell>
+                  <TableCell>{auctionObj?.auction_date}</TableCell>
+                  <TableCell>{auctionObj?.auction_amount}</TableCell>
+                  <TableCell>{memberDetails?.name ?? "—"}</TableCell>
+                  <TableCell>{`${auctionObj?.payments_count} / 20`}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => handleSelectMonthlyPayments(auctionObj)}
+                    >
+                      <EyeIcon className="size-3.5" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   return (
     <div>
-      <div className="flex mt-8 mb-4">
-        <h5 className="text-xl font-bold tracking-tight text-gray-900 self-center">
-          Chit Months
-        </h5>
-        <div className="flex justify-end self-center ml-auto">
-          <AddMonths chitId={chitId} refetch={fetchChitMonths} />
-        </div>
+      <div className="flex items-center justify-between mb-3 mt-6">
+        <h2 className="text-sm font-semibold sm:text-base">Chit Months</h2>
+        <AddMonths chitId={chitId} refetch={fetchChitMonths} />
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Auction Date</TableHead>
-            <TableHead>Auction Amount</TableHead>
-            <TableHead>Auction User</TableHead>
-            <TableHead>Payments</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>{renderTableRows()}</TableBody>
-      </Table>
+      <MobileList />
+      <DesktopTable />
       <MonthlyPaymentsDialog
         month_name={selectedMonth?.name}
         month_id={selectedMonth?.id}
