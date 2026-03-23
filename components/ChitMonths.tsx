@@ -129,7 +129,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3 mt-6">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold sm:text-base">Chit Months</h2>
         <AddMonths chitId={chitId} refetch={fetchChitMonths} />
       </div>

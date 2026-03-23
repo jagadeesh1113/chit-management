@@ -42,22 +42,85 @@ const newRow = (name = "", mobile = ""): MemberRow => ({
   mobile,
 });
 
-// ── Contact Picker detection ──────────────────────────────────────────────────
-// iOS Safari PWA exposes navigator.contacts but NOT window.ContactsManager.
-// The only reliable cross-platform check is whether navigator.contacts.select
-// is actually a callable function. Must run after mount (not at module level)
-// because SSR and Next.js pre-rendering have no navigator at all.
-const checkContactsSupported = (): boolean => {
-  try {
-    return (
+// ── Contact Picker button ─────────────────────────────────────────────────────
+// iOS Safari PWA requires navigator.contacts.select() to be called DIRECTLY
+// inside a native DOM event handler — no React synthetic events, no async gaps,
+// no Portal boundaries in between. We attach a native "click" listener via
+// useEffect so the call path is: native tap → addEventListener callback → .select()
+// with zero React batching or Portal indirection.
+function ContactPickerButton({
+  onPicked,
+  disabled,
+}: {
+  onPicked: (contacts: DeviceContact[]) => void;
+  disabled?: boolean;
+}) {
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const [supported, setSupported] = React.useState(false);
+  const [picking, setPicking] = React.useState(false);
+
+  // Detect support after mount (SSR-safe)
+  React.useEffect(() => {
+    const ok =
       typeof navigator !== "undefined" &&
       "contacts" in navigator &&
-      typeof (navigator as any).contacts?.select === "function"
-    );
-  } catch {
-    return false;
-  }
-};
+      typeof (navigator as any).contacts?.select === "function";
+    setSupported(ok);
+  }, []);
+
+  // Attach a NATIVE event listener — bypasses React's synthetic event system
+  // and Radix Portal boundary. This is the only reliable way on iOS Safari PWA.
+  React.useEffect(() => {
+    const btn = btnRef.current;
+    if (!btn || !supported) return;
+
+    const handleNativeClick = async () => {
+      if (picking) return;
+      setPicking(true);
+      try {
+        const contacts: DeviceContact[] = await (
+          navigator as any
+        ).contacts.select(["name", "tel"], { multiple: true });
+        if (contacts && contacts.length > 0) {
+          onPicked(contacts);
+        }
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          toast.error("Could not access contacts", { position: "top-right" });
+        }
+      } finally {
+        setPicking(false);
+      }
+    };
+
+    // Use { capture: true } to intercept before any React handler
+    btn.addEventListener("click", handleNativeClick, { capture: true });
+    return () => btn.removeEventListener("click", handleNativeClick, { capture: true });
+  }, [supported, picking, onPicked]);
+
+  if (!supported) return null;
+
+  return (
+    <button
+      ref={btnRef}
+      type="button"
+      disabled={disabled || picking}
+      className="w-full flex items-center gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-left hover:bg-muted/70 transition-colors disabled:opacity-50"
+    >
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <BookUserIcon className="size-4 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium leading-tight">
+          {picking ? "Opening contacts…" : "Pick from contacts"}
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Select one or multiple contacts at once
+        </p>
+      </div>
+    </button>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const AddMembers = ({
@@ -70,19 +133,8 @@ export const AddMembers = ({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [pickingContacts, setPickingContacts] = React.useState(false);
-
-  // Initialise to false; flip to true after mount once we can safely read navigator.
-  // This is the key fix for iOS Safari PWA — the API is only available client-side
-  // after hydration, and window.ContactsManager is absent even when the API works.
-  const [isContactsSupported, setIsContactsSupported] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsContactsSupported(checkContactsSupported());
-  }, []);
-
-  // Single list of rows — shared source of truth for both manual and picked contacts
   const [rows, setRows] = React.useState<MemberRow[]>([newRow()]);
+
   const isMulti = rows.length > 1;
 
   const resetForm = () => {
@@ -108,21 +160,14 @@ export const AddMembers = ({
     id: string,
     field: keyof Omit<MemberRow, "id">,
     value: string,
-  ) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+  ) =>
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
+    );
 
-  // ── Contact Picker ────────────────────────────────────────────────────────
-  // Must be called directly from a user-gesture handler (onClick).
-  // iOS Safari rejects the promise if there is any async gap before .select().
-  const handlePickContacts = async () => {
-    setPickingContacts(true);
-    try {
-      const contacts: DeviceContact[] = await (navigator as any).contacts.select(
-        ["name", "tel"],
-        { multiple: true },
-      );
-
-      if (!contacts || contacts.length === 0) return;
-
+  // ── Handle contacts picked from device ────────────────────────────────────
+  const handlePicked = React.useCallback(
+    (contacts: DeviceContact[]) => {
       const mapped: MemberRow[] = contacts
         .map((c) =>
           newRow(
@@ -139,14 +184,9 @@ export const AddMembers = ({
         const merged = [...cleaned, ...fresh];
         return merged.length ? merged : [newRow()];
       });
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        toast.error("Could not access contacts", { position: "top-right" });
-      }
-    } finally {
-      setPickingContacts(false);
-    }
-  };
+    },
+    [],
+  );
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -165,14 +205,19 @@ export const AddMembers = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          members: valid.map((r) => ({ name: r.name.trim(), mobile: r.mobile.trim() })),
+          members: valid.map((r) => ({
+            name: r.name.trim(),
+            mobile: r.mobile.trim(),
+          })),
           chit_id: chitId,
         }),
       });
       const data = await res.json();
       if (data.success) {
         toast.success(
-          valid.length === 1 ? "Member added successfully" : `${valid.length} members added`,
+          valid.length === 1
+            ? "Member added successfully"
+            : `${valid.length} members added`,
           { position: "top-right" },
         );
         setIsDialogOpen(false);
@@ -214,36 +259,11 @@ export const AddMembers = ({
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
 
-            {/* Contact Picker button — only rendered after mount when API confirmed */}
-            {isContactsSupported && (
-              <button
-                type="button"
-                onClick={handlePickContacts}
-                disabled={pickingContacts}
-                className="w-full flex items-center gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-left hover:bg-muted/70 transition-colors disabled:opacity-50"
-              >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <BookUserIcon className="size-4 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium leading-tight">
-                    {pickingContacts ? "Opening contacts…" : "Pick from contacts"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Select one or multiple contacts at once
-                  </p>
-                </div>
-              </button>
-            )}
+            {/* Contact Picker — native event listener, safe inside Portal */}
+            <ContactPickerButton onPicked={handlePicked} disabled={loading} />
 
-            {/* Divider */}
-            {isContactsSupported && (
-              <div className="flex items-center gap-3">
-                <div className="flex-1 border-t border-border" />
-                <span className="text-xs text-muted-foreground">or enter manually</span>
-                <div className="flex-1 border-t border-border" />
-              </div>
-            )}
+            {/* Divider — shown when ContactPickerButton renders (it returns null if unsupported) */}
+            <ContactPickerDivider />
 
             {/* Member rows */}
             <div className="space-y-2">
@@ -340,7 +360,11 @@ export const AddMembers = ({
                     Cancel
                   </Button>
                 </DialogClose>
-                <Button type="submit" className="flex-1 sm:flex-none" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="flex-1 sm:flex-none"
+                  disabled={loading}
+                >
                   {loading ? "Adding…" : "Add Member"}
                 </Button>
               </>
@@ -351,3 +375,26 @@ export const AddMembers = ({
     </Dialog>
   );
 };
+
+// ── Divider — only shown when ContactPickerButton is supported ────────────────
+function ContactPickerDivider() {
+  const [supported, setSupported] = React.useState(false);
+
+  React.useEffect(() => {
+    const ok =
+      typeof navigator !== "undefined" &&
+      "contacts" in navigator &&
+      typeof (navigator as any).contacts?.select === "function";
+    setSupported(ok);
+  }, []);
+
+  if (!supported) return null;
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 border-t border-border" />
+      <span className="text-xs text-muted-foreground">or enter manually</span>
+      <div className="flex-1 border-t border-border" />
+    </div>
+  );
+}

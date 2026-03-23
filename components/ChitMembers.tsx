@@ -183,7 +183,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div>
-      <div className="flex items-center justify-between mb-3 mt-6">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold sm:text-base">
           Members{" "}
           <span className="text-muted-foreground font-normal">
