@@ -6,21 +6,30 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient();
 
-    const formDataDetails = await req.formData();
+    const { members, chit_id, owner } = await req.json();
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const owner = formDataDetails.get("owner") as string;
+    // const owner = formDataDetails.get("owner") as string;
+
+    const membersToBeAdded = members?.map(
+      (memberObj: { name: string; mobile: string }) => {
+        return {
+          name: memberObj?.name,
+          mobile: memberObj?.mobile,
+          created_by: user?.id,
+          chit_id,
+          owner: owner ?? false,
+        };
+      },
+    );
+
     // Store chunk with embedding in database
-    const { error, data } = await supabase.from("members").insert({
-      name: formDataDetails.get("name"),
-      mobile: formDataDetails.get("mobile"),
-      created_by: user?.id,
-      chit_id: formDataDetails.get("chit_id"),
-      owner: owner ? JSON.parse(owner) : false,
-    });
+    const { error, data } = await supabase
+      .from("members")
+      .insert(membersToBeAdded);
 
     if (error) {
       return NextResponse.json(
@@ -40,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to add member to chit",
+        error: error.message || "Failed to add members to chit",
       },
       { status: 500 },
     );

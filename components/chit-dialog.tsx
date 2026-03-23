@@ -60,16 +60,18 @@ export function AddOrUpdateChit({
 
   const addChitOwnerAsMember = async ({ chitId }: { chitId: string }) => {
     try {
-      const formData = new FormData();
-
-      formData.append("chit_id", chitId);
-      formData.append("name", user?.user_metadata?.name ?? user?.email);
-      formData.append("mobile", user?.user_metadata?.mobile);
-      formData.append("owner", JSON.stringify(true));
-
       const res = await fetch("/api/members", {
         method: "POST",
-        body: formData,
+        body: JSON.stringify({
+          members: [
+            {
+              name: user?.user_metadata?.name ?? user?.email,
+              mobile: user?.user_metadata?.mobile,
+            },
+          ],
+          chit_id: chitId,
+          owner: true,
+        }),
       });
 
       await res.json();
@@ -180,6 +182,7 @@ export function AddOrUpdateChit({
           onSubmit={editMode ? handleUpdateChit : handleAddChit}
           className="flex flex-col max-h-[90dvh]"
         >
+          {/* Fixed header */}
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
             <DialogTitle>
               {editMode ? "Update Chit Details" : "Add Chit"}
