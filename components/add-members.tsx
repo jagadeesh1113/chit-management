@@ -31,14 +31,13 @@ interface DeviceContact {
 }
 
 interface MemberRow {
-  id: number;
+  id: string;
   name: string;
   mobile: string;
 }
 
-let _rowId = 0;
 const newRow = (name = "", mobile = ""): MemberRow => ({
-  id: ++_rowId,
+  id: crypto.randomUUID(),
   name,
   mobile,
 });
@@ -79,14 +78,14 @@ export const AddMembers = ({
   // ── Row helpers ──────────────────────────────────────────────────────────
   const addEmptyRow = () => setRows((prev) => [...prev, newRow()]);
 
-  const removeRow = (id: number) =>
+  const removeRow = (id: string) =>
     setRows((prev) => {
       const next = prev.filter((r) => r.id !== id);
       return next.length ? next : [newRow()];
     });
 
   const updateRow = (
-    id: number,
+    id: string,
     field: keyof Omit<MemberRow, "id">,
     value: string,
   ) =>
@@ -165,6 +164,7 @@ export const AddMembers = ({
         );
         setIsDialogOpen(false);
         refetch();
+        resetForm();
       } else {
         setError(data.error);
       }
