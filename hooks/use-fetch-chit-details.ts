@@ -1,27 +1,28 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
+import type { Chit } from "@/types";
 
-function chitDetailReducer(state: any, action: { type: string; data: any }) {
-  const { type, data } = action;
-  switch (type) {
-    case "SET_CHIT_DETAILS": {
-      return {
-        ...state,
-        chitDetails: data,
-      };
-    }
-    case "SET_ERROR": {
-      return {
-        ...state,
-        error: data,
-      };
-    }
-    case "SET_LOADING": {
-      return {
-        ...state,
-        loading: data,
-      };
-    }
+interface ChitDetailState {
+  chitDetails: Chit | null;
+  loading: boolean;
+  error: string | null;
+}
+
+type ChitDetailAction =
+  | { type: "SET_CHIT_DETAILS"; data: Chit }
+  | { type: "SET_LOADING"; data: boolean }
+  | { type: "SET_ERROR"; data: string | null };
+
+function chitDetailReducer(
+  state: ChitDetailState,
+  action: ChitDetailAction,
+): ChitDetailState {
+  switch (action.type) {
+    case "SET_CHIT_DETAILS":
+      return { ...state, chitDetails: action.data };
+    case "SET_LOADING":
+      return { ...state, loading: action.data };
+    case "SET_ERROR":
+      return { ...state, error: action.data };
     default:
       return state;
   }
@@ -34,41 +35,29 @@ export const useFetchChitDetails = (id: string) => {
     loading: true,
   });
 
-  React.useEffect(() => {
-    fetchChitDetails(id);
-  }, [id]);
-
-  const fetchChitDetails = async (id: string) => {
+  const fetchChitDetails = React.useCallback(async () => {
+    dispatch({ type: "SET_LOADING", data: true });
     try {
-      dispatch({
-        type: "SET_LOADING",
-        data: true,
-      });
       const res = await fetch(`/api/chit-detail/${id}`);
       const data = await res.json();
       if (data.error) {
-        dispatch({
-          type: "SET_ERROR",
-          data: data.error,
-        });
+        dispatch({ type: "SET_ERROR", data: data.error });
       } else {
-        dispatch({
-          type: "SET_CHIT_DETAILS",
-          data: data.chitDetails,
-        });
+        dispatch({ type: "SET_CHIT_DETAILS", data: data.chitDetails });
       }
     } catch (err) {
       dispatch({
         type: "SET_ERROR",
-        data: err,
+        data: err instanceof Error ? err.message : "Failed to fetch chit details",
       });
     } finally {
-      dispatch({
-        type: "SET_LOADING",
-        data: false,
-      });
+      dispatch({ type: "SET_LOADING", data: false });
     }
-  };
+  }, [id]);
+
+  React.useEffect(() => {
+    fetchChitDetails();
+  }, [fetchChitDetails]);
 
   return state;
 };

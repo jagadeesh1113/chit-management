@@ -15,6 +15,7 @@ import {
 import { Input } from "./ui/input";
 import React from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   BookUserIcon,
   PlusIcon,
@@ -59,7 +60,12 @@ function ContactPickerButton({
   const [supported, setSupported] = React.useState(false);
   const [picking, setPicking] = React.useState(false);
 
-  // Detect support after mount (SSR-safe)
+  // Detect support after mount (SSR-safe).
+  // IMPORTANT: Do NOT conditionally return null based on this —
+  // that causes a hydration mismatch because the server always
+  // renders nothing while the client may render the button.
+  // Instead we render a hidden element on the server and reveal
+  // it client-side once we've confirmed support.
   React.useEffect(() => {
     const ok =
       typeof navigator !== "undefined" &&
@@ -98,14 +104,15 @@ function ContactPickerButton({
     return () => btn.removeEventListener("click", handleNativeClick, { capture: true });
   }, [supported, picking, onPicked]);
 
-  if (!supported) return null;
-
   return (
     <button
       ref={btnRef}
       type="button"
       disabled={disabled || picking}
-      className="w-full flex items-center gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-left hover:bg-muted/70 transition-colors disabled:opacity-50"
+      className={cn(
+        "w-full flex items-center gap-3 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-3 text-left hover:bg-muted/70 transition-colors disabled:opacity-50",
+        !supported && "hidden",
+      )}
     >
       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <BookUserIcon className="size-4 text-primary" />
@@ -388,10 +395,9 @@ function ContactPickerDivider() {
     setSupported(ok);
   }, []);
 
-  if (!supported) return null;
-
+  // Render always so server/client HTML matches; hide via CSS until supported
   return (
-    <div className="flex items-center gap-3">
+    <div className={cn("flex items-center gap-3", !supported && "hidden")}>
       <div className="flex-1 border-t border-border" />
       <span className="text-xs text-muted-foreground">or enter manually</span>
       <div className="flex-1 border-t border-border" />

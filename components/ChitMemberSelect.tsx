@@ -13,9 +13,11 @@ import React from "react";
 export const ChitMemberSelect = ({
   onChange,
   value,
+  className,
 }: {
   onChange: (_value: string) => void;
   value: string | undefined;
+  className?: string;
 }) => {
   const { values } = React.useContext(MemberContext);
 
@@ -31,7 +33,7 @@ export const ChitMemberSelect = ({
 
   return (
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="w-full max-w-48">
+      <SelectTrigger className={`w-full ${className ?? ""}`}>
         <SelectValue placeholder="Select a member" />
       </SelectTrigger>
       <SelectContent>
