@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { Field, FieldGroup } from "./ui/field";
+import CurrencyInput from "react-currency-input-field";
 
 export function AddOrUpdateChit({
   refetch,
@@ -79,11 +80,25 @@ export function AddOrUpdateChit({
     }
   };
 
+  const formatCurrencyInputFields = (formData: FormData) => {
+    // Replace currency values to numbers
+    formData.set(
+      "amount",
+      (formData.get("amount") as string)?.replace(/[₹,]/g, ""),
+    );
+    formData.set(
+      "charges",
+      (formData.get("charges") as string)?.replace(/[₹,]/g, ""),
+    );
+  };
+
   const handleAddChit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     setIsLoading(true);
     setError(null);
+
+    formatCurrencyInputFields(formData);
 
     try {
       const res = await fetch("/api/chits", {
@@ -93,13 +108,12 @@ export function AddOrUpdateChit({
 
       const data = await res.json();
 
-      const chitDetails = data?.values?.[0];
-
-      await addChitOwnerAsMember({
-        chitId: chitDetails?.id,
-      });
-
       if (data.success) {
+        const chitDetails = data?.values?.[0];
+
+        await addChitOwnerAsMember({
+          chitId: chitDetails?.id,
+        });
         toast.success("Chit added successfully", {
           position: "top-right",
         });
@@ -120,6 +134,9 @@ export function AddOrUpdateChit({
     formData.append("id", selectedChitObj?.id);
     setIsLoading(true);
     setError(null);
+
+    // Replace currency values to numbers
+    formatCurrencyInputFields(formData);
 
     try {
       const res = await fetch("/api/chits", {
@@ -182,12 +199,13 @@ export function AddOrUpdateChit({
             </Field>
             <Field>
               <Label htmlFor="amount">Amount</Label>
-              <Input
+              <CurrencyInput
                 id="amount"
                 name="amount"
                 required
-                type="number"
                 defaultValue={selectedChitObj?.amount}
+                intlConfig={{ locale: "hi-IN", currency: "INR" }}
+                customInput={Input}
               />
             </Field>
             <Field>
@@ -212,12 +230,13 @@ export function AddOrUpdateChit({
             </Field>
             <Field>
               <Label htmlFor="charges">Chit Charges / Month</Label>
-              <Input
+              <CurrencyInput
                 id="charges"
-                type="number"
-                required
                 name="charges"
+                required
                 defaultValue={selectedChitObj?.charges}
+                intlConfig={{ locale: "hi-IN", currency: "INR" }}
+                customInput={Input}
               />
             </Field>
             <Field>

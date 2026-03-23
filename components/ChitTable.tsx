@@ -31,6 +31,12 @@ export const ChitTable = ({
   onSelectChit: (_chitObj: { mode: "EDIT" | "DELETE"; details: any }) => void;
 }) => {
   const router = useRouter();
+  const formatter = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 
   const handleViewChit = (chitObj: any) => {
     router.push(`/chit/${chitObj.id}`);
@@ -59,10 +65,10 @@ export const ChitTable = ({
       return (
         <TableRow key={chitObj.id}>
           <TableCell className="font-medium">{chitObj.name}</TableCell>
-          <TableCell>{chitObj.amount}</TableCell>
+          <TableCell>{formatter.format(chitObj.amount)}</TableCell>
           <TableCell>{chitObj.members}</TableCell>
           <TableCell>{chitObj.months}</TableCell>
-          <TableCell>{chitObj.charges}</TableCell>
+          <TableCell>{formatter.format(chitObj.charges)}</TableCell>
           <TableCell>{chitObj.start_date}</TableCell>
           <TableCell className="text-right">
             <DropdownMenu>
