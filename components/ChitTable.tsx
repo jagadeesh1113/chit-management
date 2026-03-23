@@ -20,18 +20,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { toast } from "sonner";
 
 export const ChitTable = ({
   loading,
   values,
   onSelectChit,
-  refetch,
 }: {
   loading: boolean;
   values: any[];
-  onSelectChit: (_chitObj: any) => void;
-  refetch?: () => void;
+  onSelectChit: (_chitObj: { mode: "EDIT" | "DELETE"; details: any }) => void;
 }) => {
   const router = useRouter();
 
@@ -40,33 +37,17 @@ export const ChitTable = ({
   };
 
   const handleEditChit = (chitObj: any) => {
-    onSelectChit(chitObj);
+    onSelectChit({
+      mode: "EDIT",
+      details: chitObj,
+    });
   };
 
-  const handleDeleteChit = async (chitObj: any) => {
-    try {
-      const res = await fetch("/api/chits", {
-        method: "DELETE",
-        body: JSON.stringify({
-          chit_id: chitObj?.id,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success("Chit deleted successfully", {
-          position: "top-right",
-        });
-        refetch?.();
-      } else {
-        toast.error("Chit deleted failed", {
-          position: "top-right",
-        });
-      }
-    } catch (error: any) {
-      toast.error("Chit deleted failed" + error, {
-        position: "top-right",
-      });
-    }
+  const handleDeleteChit = (chitObj: any) => {
+    onSelectChit({
+      mode: "DELETE",
+      details: chitObj,
+    });
   };
 
   const renderTableRows = () => {
@@ -114,19 +95,21 @@ export const ChitTable = ({
   };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>No of Members</TableHead>
-          <TableHead>No Of Months</TableHead>
-          <TableHead>Charges / Month</TableHead>
-          <TableHead>Start Date</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>{renderTableRows()}</TableBody>
-    </Table>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>No of Members</TableHead>
+            <TableHead>No Of Months</TableHead>
+            <TableHead>Charges / Month</TableHead>
+            <TableHead>Start Date</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>{renderTableRows()}</TableBody>
+      </Table>
+    </>
   );
 };
