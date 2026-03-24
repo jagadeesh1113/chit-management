@@ -21,6 +21,8 @@ export interface Chit {
   start_date: string;
   user_id: string;
   deleted: boolean;
+  month_count: number;
+  member_count: number;
 }
 
 // ── Month / Auction ───────────────────────────────────────────────────────────

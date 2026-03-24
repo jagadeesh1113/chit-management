@@ -36,7 +36,7 @@ export const PaymentStatusBadge = ({
   );
 };
 
-export const PaymentsBadge = ({
+export const CountBadge = ({
   count,
   total,
 }: {
