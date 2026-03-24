@@ -31,6 +31,8 @@ import {
 } from "./ui/dropdown-menu";
 import { DeleteMonthDialog } from "./delete-month-dialog";
 import { Skeleton } from "./ui/skeleton";
+import { ChitMonth } from "@/types";
+import { ChitContext } from "@/context/ChitContext";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -77,6 +79,8 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
     refetch: fetchChitMonths,
   } = useFetchChitMonths(chitId);
   const { values: members } = React.useContext(MemberContext);
+  const { chitDetails } = React.useContext(ChitContext);
+
   const [selectedMonth, setSelectedMonth] = React.useState<null | any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [selectedMonthToDelete, setSelectedMonthToDelete] = React.useState<
@@ -122,11 +126,13 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
 
     return (
       <div className="space-y-2 sm:hidden">
-        {values?.map((auctionObj: any) => {
-          const memberDetails: any = members?.find(
-            (m: any) => m?.id === auctionObj?.auction_user,
+        {values?.map((auctionObj: ChitMonth) => {
+          const memberDetails = members?.find(
+            (m) => m?.id === auctionObj?.auction_user,
           );
-          const hasAuction = !!auctionObj?.auction_amount;
+          const payableAmount = chitDetails?.amount
+            ? chitDetails.amount - auctionObj.auction_amount
+            : null;
 
           return (
             <div
@@ -179,37 +185,60 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
               </div>
 
               {/* Stats row */}
-              <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
-                <div className="px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <IndianRupeeIcon className="size-3" />
-                    Auction
-                  </p>
-                  <p className="text-xs font-semibold mt-0.5 tabular-nums">
-                    {hasAuction
-                      ? fmt.format(Number(auctionObj.auction_amount))
-                      : "—"}
-                  </p>
+              <div className="border-t border-border">
+                {/* Money row */}
+                <div className="grid grid-cols-3 divide-x divide-border">
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Auction
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums">
+                      {fmt.format(auctionObj.auction_amount)}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Payable
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums">
+                      {payableAmount !== null ? fmt.format(payableAmount) : "-"}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Received
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums text-green-700 dark:text-green-400">
+                      {fmt.format(auctionObj?.payments_received)}
+                    </p>
+                  </div>
                 </div>
-                <div className="px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrophyIcon className="size-3" />
-                    Winner
-                  </p>
-                  <p className="text-xs font-semibold mt-0.5 truncate">
-                    {memberDetails?.name ?? "—"}
-                  </p>
-                </div>
-                <div className="px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <UsersIcon className="size-3" />
-                    Paid
-                  </p>
-                  <div className="mt-0.5">
-                    <PaymentsBadge
-                      count={auctionObj?.payments_count ?? 0}
-                      total={members?.length ?? 20}
-                    />
+
+                {/* Winner + payments row */}
+                <div className="flex items-start justify-between gap-3 px-3 py-2.5 border-t border-border">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <TrophyIcon className="size-3" />
+                      Winner
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 truncate">
+                      {memberDetails?.name ?? "—"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[11px] text-muted-foreground flex items-center justify-end gap-1">
+                      <UsersIcon className="size-3" />
+                      Paid
+                    </p>
+                    <div className="mt-0.5">
+                      <PaymentsBadge
+                        count={auctionObj?.payments_count ?? 0}
+                        total={members?.length ?? 20}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -229,6 +258,8 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             <TableHead className="font-medium">Month</TableHead>
             <TableHead className="font-medium">Auction Date</TableHead>
             <TableHead className="font-medium">Auction Amount</TableHead>
+            <TableHead className="font-medium">Payable Amount</TableHead>
+            <TableHead className="font-medium">Payment Received</TableHead>
             <TableHead className="font-medium">Winner</TableHead>
             <TableHead className="font-medium">Payments</TableHead>
             <TableHead className="text-right font-medium">Actions</TableHead>
@@ -236,13 +267,12 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableSkletonRows rowsCount={5} colsCount={6} />
+            <TableSkletonRows rowsCount={5} colsCount={7} />
           ) : (
-            values?.map((auctionObj: any) => {
-              const memberDetails: any = members?.find(
-                (m: any) => m?.id === auctionObj?.auction_user,
+            values?.map((auctionObj: ChitMonth) => {
+              const memberDetails = members?.find(
+                (m) => m?.id === auctionObj?.auction_user,
               );
-              const hasAuction = auctionObj?.auction_amount >= 0;
 
               return (
                 <TableRow
@@ -260,11 +290,17 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     </span>
                   </TableCell>
                   <TableCell className="font-medium tabular-nums">
-                    {hasAuction ? (
-                      fmt.format(Number(auctionObj.auction_amount))
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                    {fmt.format(auctionObj.auction_amount)}
+                  </TableCell>
+                  <TableCell className="font-medium tabular-nums">
+                    {chitDetails?.amount
+                      ? fmt.format(
+                          chitDetails.amount - auctionObj.auction_amount,
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="font-medium tabular-nums text-green-700 dark:text-green-400">
+                    {fmt.format(auctionObj?.payments_received)}
                   </TableCell>
                   <TableCell>
                     {memberDetails?.name ? (

@@ -33,6 +33,7 @@ export interface ChitMonth {
   created_by: string;
   payments_count: number;
   is_owner_auction?: boolean;
+  payments_received: number;
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
