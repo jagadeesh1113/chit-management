@@ -45,8 +45,11 @@ const compactCurrencyFormatter = new Intl.NumberFormat("en-IN", {
 });
 
 export const ChitReports = () => {
-  const { values: members, loading: membersLoading, refetch: refetchMembers } =
-    React.useContext(MemberContext);
+  const {
+    values: members,
+    loading: membersLoading,
+    refetch: refetchMembers,
+  } = React.useContext(MemberContext);
   const {
     values: months,
     loading: monthsLoading,
@@ -165,7 +168,7 @@ export const ChitReports = () => {
         </Button>
       </div>
       <div className="grid min-w-0 gap-4 xl:grid-cols-3">
-        <Card className="min-w-0 shadow-none xl:col-span-2">
+        <Card className="min-w-0 shadow-none xl:col-span-3">
           <CardContent className="min-w-0 p-4">
             <h3 className="text-sm font-semibold mb-3">
               Expected vs Received by Month
