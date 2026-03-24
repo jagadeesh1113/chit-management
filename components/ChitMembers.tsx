@@ -25,7 +25,7 @@ import { MemberContext } from "@/context/MemberContext";
 import { MoreHorizontalIcon, PhoneIcon } from "lucide-react";
 import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
-import { OwnerBadge, PaymentsBadge } from "./custom-badges";
+import { OwnerBadge, CountBadge } from "./custom-badges";
 import { ChitContext } from "@/context/ChitContext";
 import { formatAmount, getMonthlyPaymentAmount } from "@/lib/utils";
 import { ChitMonthContext } from "@/context/MonthContext";
@@ -145,7 +145,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
               <div className="px-3 py-2">
                 <p className="text-xs text-muted-foreground">Payments</p>
                 <div className="mt-0.5">
-                  <PaymentsBadge
+                  <CountBadge
                     count={memberObj?.payments_count ?? 0}
                     total={chitDetails?.months ?? 20}
                   />
@@ -201,7 +201,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                 </TableCell>
                 <TableCell>{memberObj?.mobile}</TableCell>
                 <TableCell>
-                  <PaymentsBadge
+                  <CountBadge
                     count={memberObj?.payments_count ?? 0}
                     total={chitDetails?.months ?? 20}
                   />

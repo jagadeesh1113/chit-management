@@ -143,11 +143,9 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { error, data } = await supabase
-      .from("chits")
-      .select("*")
-      .eq("user_id", user?.id)
-      .eq("deleted", false);
+    const { data, error } = await supabase.rpc("get_chit_v1", {
+      selected_user_id: user?.id,
+    });
 
     if (error) {
       return NextResponse.json(

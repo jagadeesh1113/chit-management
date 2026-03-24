@@ -38,7 +38,7 @@ import {
   getAuctionUserPayableAmount,
   getMonthlyPaymentAmount,
 } from "@/lib/utils";
-import { PaymentsBadge } from "./custom-badges";
+import { CountBadge } from "./custom-badges";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -250,7 +250,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                       Paid
                     </p>
                     <div className="mt-0.5">
-                      <PaymentsBadge
+                      <CountBadge
                         count={auctionObj?.payments_count ?? 0}
                         total={chitDetails?.members ?? 20}
                       />
@@ -338,7 +338,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <PaymentsBadge
+                    <CountBadge
                       count={auctionObj?.payments_count ?? 0}
                       total={chitDetails?.members ?? 20}
                     />
