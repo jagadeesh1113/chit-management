@@ -2,9 +2,8 @@
   "name": "Chit Management App",
   "short_name": "ManageChit",
   "description": "The fastest way to manage chit funds",
-  "start_url": "/?source=pwa",
+  "start_url": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#ffffff",
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
@@ -65,15 +64,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/screenshot-1.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Manage your chit funds"
     }
   ],
   "shortcuts": [

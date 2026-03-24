@@ -1,5 +1,5 @@
-const CACHE_NAME = "manage-chit-v4";
-const STATIC_CACHE_NAME = "manage-chit-static-v4";
+const CACHE_NAME = "manage-chit-v5";
+const STATIC_CACHE_NAME = "manage-chit-static-v5";
 
 // Assets to cache on install
 const STATIC_ASSETS = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -39,44 +39,48 @@ function isPermanentlyDismissed(): boolean {
   }
 }
 
+function isAndroidChrome(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return /android/.test(ua) && /chrome/.test(ua) && !/edga|opr|samsung/.test(ua);
+}
+
 export function PWAProvider({ children }: { children: React.ReactNode }) {
   useServiceWorker();
 
-  const [installPrompt, setInstallPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
+  // Use a ref to capture the event synchronously — critical for Android Chrome.
+  // Android fires beforeinstallprompt very early and if we miss it we lose it.
+  const installPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
+
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
+  const [showManualGuide, setShowManualGuide] = useState(false);
 
-  // Detect Android
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ua = navigator.userAgent.toLowerCase();
-    setIsAndroid(/android/.test(ua));
-  }, []);
-
-  // Listen for the beforeinstallprompt event
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (isInstalled()) return;
 
     const handler = (e: Event) => {
-      // Always prevent the mini-infobar — we show our own UI
+      // CRITICAL: preventDefault() must be called synchronously to retain the prompt.
+      // Do NOT await anything before this call.
       e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
 
-      // Only show banner if not installed, not snoozed, not permanently dismissed
-      if (!isInstalled() && !isSnoozed() && !isPermanentlyDismissed()) {
-        // Small delay so the page settles before we show the banner
-        setTimeout(() => setShowBanner(true), 2000);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      installPromptRef.current = promptEvent;
+      setInstallPrompt(promptEvent);
+
+      // Show banner if user hasn't dismissed
+      if (!isSnoozed() && !isPermanentlyDismissed()) {
+        setTimeout(() => setShowBanner(true), 1500);
       }
     };
 
-    window.addEventListener("beforeinstallprompt", handler);
-
-    // Detect if already installed via appinstalled event
     const onInstalled = () => {
       setShowBanner(false);
       setInstallPrompt(null);
+      installPromptRef.current = null;
     };
+
+    window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
@@ -85,96 +89,77 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // For Android: if beforeinstallprompt never fires (e.g. already seen, Samsung Internet),
-  // show a manual "Add to Home Screen" guide banner after some engagement
+  // Fallback for Android Chrome when beforeinstallprompt doesn't fire.
+  // This happens when: the app was recently prompted, or criteria aren't
+  // fully met yet. We show a manual guide in this case.
   useEffect(() => {
-    if (!isAndroid) return;
+    if (!isAndroidChrome()) return;
     if (isInstalled() || isSnoozed() || isPermanentlyDismissed()) return;
 
-    // If the native prompt hasn't fired after 5s, show a manual guide
     const timer = setTimeout(() => {
-      if (!installPrompt && !showBanner) {
+      // If native prompt still hasn't fired, offer manual instructions
+      if (!installPromptRef.current && !showBanner) {
         setShowBanner(true);
       }
-    }, 5000);
+    }, 6000);
 
     return () => clearTimeout(timer);
-  }, [isAndroid, installPrompt, showBanner]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleInstall = useCallback(async () => {
-    if (installPrompt) {
-      // Native install flow
-      await installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
+    const prompt = installPromptRef.current;
+
+    if (prompt) {
+      // Native install — must call .prompt() directly, no async gap
+      await prompt.prompt();
+      const { outcome } = await prompt.userChoice;
       if (outcome === "accepted") {
         setInstallPrompt(null);
+        installPromptRef.current = null;
         setShowBanner(false);
-        try {
-          localStorage.removeItem(DISMISSED_KEY);
-        } catch {
-          /* noop */
-        }
+        try { localStorage.removeItem(DISMISSED_KEY); } catch { /* noop */ }
       } else {
-        // Dismissed — snooze for 3 days
-        try {
-          localStorage.setItem(
-            DISMISSED_UNTIL_KEY,
-            String(Date.now() + SNOOZE_DURATION_MS),
-          );
-        } catch {
-          /* noop */
-        }
-        setShowBanner(false);
+        snooze();
       }
     } else {
-      // No native prompt — show manual instructions (handled by manualGuide state)
-      setShowManualGuide(true);
+      // No native prompt available — show manual instructions
       setShowBanner(false);
+      setShowManualGuide(true);
     }
-  }, [installPrompt]);
+  }, []);
 
-  const handleDismiss = useCallback(() => {
+  const snooze = useCallback(() => {
     setShowBanner(false);
     try {
-      localStorage.setItem(
-        DISMISSED_UNTIL_KEY,
-        String(Date.now() + SNOOZE_DURATION_MS),
-      );
-    } catch {
-      /* noop */
-    }
+      localStorage.setItem(DISMISSED_UNTIL_KEY, String(Date.now() + SNOOZE_DURATION_MS));
+    } catch { /* noop */ }
   }, []);
 
   const handleNeverShow = useCallback(() => {
     setShowBanner(false);
-    try {
-      localStorage.setItem(DISMISSED_KEY, "true");
-    } catch {
-      /* noop */
-    }
+    try { localStorage.setItem(DISMISSED_KEY, "true"); } catch { /* noop */ }
   }, []);
 
-  const [showManualGuide, setShowManualGuide] = useState(false);
+  const hasNativePrompt = !!installPrompt;
 
   return (
     <>
       {children}
 
-      {/* Install Banner */}
+      {/* ── Install banner ─────────────────────────────────────────── */}
       {showBanner && !isInstalled() && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
           <div className="flex items-center gap-3 rounded-xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold select-none">
               MC
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-tight">
-                Install ManageChit
-              </p>
+              <p className="text-sm font-semibold leading-tight">Install ManageChit</p>
               <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-                {installPrompt
+                {hasNativePrompt
                   ? "Add to home screen for quick access"
-                  : 'Tap the menu → "Add to Home Screen"'}
+                  : 'Tap ⋮ menu → "Add to Home Screen"'}
               </p>
             </div>
             <div className="flex flex-col gap-1 shrink-0 items-end">
@@ -182,20 +167,14 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
                 onClick={handleInstall}
                 className="text-xs font-semibold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:opacity-90 active:opacity-75 transition-opacity"
               >
-                {installPrompt ? "Install" : "How?"}
+                {hasNativePrompt ? "Install" : "How?"}
               </button>
               <div className="flex gap-2">
-                <button
-                  onClick={handleDismiss}
-                  className="text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
-                >
+                <button onClick={snooze} className="text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors">
                   Later
                 </button>
-                <button
-                  onClick={handleNeverShow}
-                  className="text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors"
-                >
-                  {"Don't show"}
+                <button onClick={handleNeverShow} className="text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded transition-colors">
+                  Don&apos;t show
                 </button>
               </div>
             </div>
@@ -203,7 +182,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Manual Guide Modal (for when native prompt is unavailable) */}
+      {/* ── Manual guide (Android Chrome, no native prompt) ────────── */}
       {showManualGuide && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm"
@@ -225,33 +204,16 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
             </div>
             <ol className="space-y-3 text-sm text-muted-foreground">
               <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                  1
-                </span>
-                <span>
-                  Tap the <strong className="text-foreground">⋮ menu</strong>{" "}
-                  (three dots) in the top-right of Chrome
-                </span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                <span>Tap the <strong className="text-foreground">⋮ menu</strong> (three dots) in the top-right of Chrome</span>
               </li>
               <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                  2
-                </span>
-                <span>
-                  Select{" "}
-                  <strong className="text-foreground">
-                    Add to Home screen
-                  </strong>
-                </span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                <span>Select <strong className="text-foreground">Add to Home screen</strong></span>
               </li>
               <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                  3
-                </span>
-                <span>
-                  Tap <strong className="text-foreground">Add</strong> to
-                  confirm
-                </span>
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+                <span>Tap <strong className="text-foreground">Add</strong> to confirm</span>
               </li>
             </ol>
             <button
