@@ -1,5 +1,5 @@
-const CACHE_NAME = "manage-chit-v3";
-const STATIC_CACHE_NAME = "manage-chit-static-v3";
+const CACHE_NAME = "manage-chit-v4";
+const STATIC_CACHE_NAME = "manage-chit-static-v4";
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -7,6 +7,7 @@ const STATIC_ASSETS = [
   "/manifest.json",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
+  "/offline.html",
 ];
 
 // Install event — cache static assets
@@ -67,7 +68,7 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => {
           return caches.match(request).then((cached) => {
-            return cached || caches.match("/");
+            return cached || caches.match("/offline.html") || caches.match("/");
           });
         }),
     );
