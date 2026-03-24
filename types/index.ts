@@ -7,6 +7,7 @@ export interface Member {
   chit_id: string;
   created_by: string;
   payments_count?: number;
+  payments_received?: number;
 }
 
 // ── Chit ──────────────────────────────────────────────────────────────────────

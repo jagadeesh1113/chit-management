@@ -35,3 +35,29 @@ export const PaymentStatusBadge = ({
     </Badge>
   );
 };
+
+export const PaymentsBadge = ({
+  count,
+  total,
+}: {
+  count: number;
+  total: number;
+}) => {
+  const allPaid = count === total && total > 0;
+  return (
+    <span
+      className={
+        allPaid
+          ? "inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300"
+          : "inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"
+      }
+    >
+      {allPaid ? (
+        <span className="size-1.5 rounded-full bg-green-500 inline-block" />
+      ) : (
+        <span className="size-1.5 rounded-full bg-amber-400 inline-block" />
+      )}
+      {count} / {total}
+    </span>
+  );
+};

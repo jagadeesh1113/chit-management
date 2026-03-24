@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { DeleteMonthDialog } from "./delete-month-dialog";
+import { EditMonthDialog } from "./edit-month-dialog";
 import { Skeleton } from "./ui/skeleton";
 import { ChitMonth } from "@/types";
 import { ChitContext } from "@/context/ChitContext";
@@ -37,6 +38,7 @@ import {
   getAuctionUserPayableAmount,
   getMonthlyPaymentAmount,
 } from "@/lib/utils";
+import { PaymentsBadge } from "./custom-badges";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -55,27 +57,6 @@ const formatDate = (dateStr: string | null | undefined): string => {
   });
 };
 
-// ── Payments progress badge ───────────────────────────────────────────────────
-const PaymentsBadge = ({ count, total }: { count: number; total: number }) => {
-  const allPaid = count === total && total > 0;
-  return (
-    <span
-      className={
-        allPaid
-          ? "inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300"
-          : "inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"
-      }
-    >
-      {allPaid ? (
-        <span className="size-1.5 rounded-full bg-green-500 inline-block" />
-      ) : (
-        <span className="size-1.5 rounded-full bg-amber-400 inline-block" />
-      )}
-      {count} / {total}
-    </span>
-  );
-};
-
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const {
     values,
@@ -90,10 +71,21 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const [selectedMonthToDelete, setSelectedMonthToDelete] = React.useState<
     null | any
   >(null);
+  const [selectedMonthToEdit, setSelectedMonthToEdit] = React.useState<
+    null | any
+  >(null);
 
   const handleSelectMonthlyPayments = (monthObj: any) => {
     setSelectedMonth(monthObj);
     setIsDrawerOpen(true);
+  };
+
+  const handleEditMonth = (monthObj: any) => {
+    setSelectedMonthToEdit(monthObj);
+  };
+
+  const handleResetEdit = () => {
+    setSelectedMonthToEdit(null);
   };
 
   const handleDeleteMonth = (monthObj: any) => {
@@ -182,6 +174,11 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                       >
                         View payments
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleEditMonth(auctionObj)}
+                      >
+                        Edit
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-red-600 focus:bg-red-100 focus:text-red-600 dark:focus:bg-red-900"
@@ -255,7 +252,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     <div className="mt-0.5">
                       <PaymentsBadge
                         count={auctionObj?.payments_count ?? 0}
-                        total={members?.length ?? 20}
+                        total={chitDetails?.members ?? 20}
                       />
                     </div>
                   </div>
@@ -343,7 +340,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                   <TableCell>
                     <PaymentsBadge
                       count={auctionObj?.payments_count ?? 0}
-                      total={members?.length ?? 20}
+                      total={chitDetails?.members ?? 20}
                     />
                   </TableCell>
                   <TableCell
@@ -369,6 +366,11 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                             }
                           >
                             View payments
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEditMonth(auctionObj)}
+                          >
+                            Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -405,6 +407,12 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         onOpenChange={setIsDrawerOpen}
         month={selectedMonth}
         chit_id={chitId}
+      />
+      <EditMonthDialog
+        selectedMonth={selectedMonthToEdit}
+        editMode={!!selectedMonthToEdit}
+        onReset={handleResetEdit}
+        refetch={fetchChitMonths}
       />
       <DeleteMonthDialog
         selectedMonthDetails={selectedMonthToDelete}

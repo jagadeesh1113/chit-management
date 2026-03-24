@@ -25,7 +25,10 @@ import { MemberContext } from "@/context/MemberContext";
 import { MoreHorizontalIcon, PhoneIcon } from "lucide-react";
 import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
-import { OwnerBadge } from "./custom-badges";
+import { OwnerBadge, PaymentsBadge } from "./custom-badges";
+import { ChitContext } from "@/context/ChitContext";
+import { formatAmount, getMonthlyPaymentAmount } from "@/lib/utils";
+import { ChitMonthContext } from "@/context/MonthContext";
 
 interface MemberObj {
   id: string;
@@ -37,6 +40,20 @@ interface MemberObj {
 
 export const ChitMembers = ({ chitId }: { chitId: string }) => {
   const { values, loading, refetch } = React.useContext(MemberContext);
+  const { chitDetails } = React.useContext(ChitContext);
+  const { values: months } = React.useContext(ChitMonthContext);
+
+  const totalChitPaymentAmountPerUser = React.useMemo(() => {
+    return months?.reduce((acc, monthObj) => {
+      acc += getMonthlyPaymentAmount({
+        chit: chitDetails,
+        month: monthObj,
+        isOwnerAuction: monthObj?.is_owner_auction,
+      });
+      return acc;
+    }, 0);
+  }, [chitDetails, months]);
+
   const [selectedMemberObj, setSelectedMemberObj] = useState<{
     mode: "EDIT" | "DELETE";
     details: any;
@@ -104,7 +121,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
     }
     return (
       <div className="space-y-2 sm:hidden">
-        {values.map((memberObj: any) => (
+        {values.map((memberObj) => (
           <div
             key={memberObj.id}
             className="rounded-xl border border-border bg-card p-3"
@@ -116,12 +133,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                 </span>
                 {memberObj.owner && <OwnerBadge />}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs text-muted-foreground">
-                  {memberObj?.payments_count ?? 0} / 20
-                </span>
-                <ActionMenu member={memberObj} />
-              </div>
+              <ActionMenu member={memberObj} />
             </div>
             {memberObj?.mobile && (
               <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
@@ -129,6 +141,32 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                 {memberObj.mobile}
               </div>
             )}
+            <div className="mt-2 grid grid-cols-3 divide-x divide-border border-t border-border -mx-3 px-0">
+              <div className="px-3 py-2">
+                <p className="text-xs text-muted-foreground">Payments</p>
+                <div className="mt-0.5">
+                  <PaymentsBadge
+                    count={memberObj?.payments_count ?? 0}
+                    total={chitDetails?.months ?? 20}
+                  />
+                </div>
+              </div>
+              <div className="px-3 py-2">
+                <p className="text-xs text-muted-foreground">Received</p>
+                <p className="text-xs font-semibold tabular-nums mt-0.5 text-green-700 dark:text-green-400">
+                  {formatAmount(memberObj?.payments_received ?? 0)}
+                </p>
+              </div>
+              <div className="px-3 py-2">
+                <p className="text-xs text-muted-foreground">Pending</p>
+                <p className="text-xs font-semibold tabular-nums mt-0.5 text-amber-600 dark:text-amber-400">
+                  {formatAmount(
+                    totalChitPaymentAmountPerUser -
+                      (memberObj.payments_received ?? 0),
+                  )}
+                </p>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -144,6 +182,8 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
             <TableHead className="font-medium">Name</TableHead>
             <TableHead className="font-medium">Mobile</TableHead>
             <TableHead className="font-medium">Payments</TableHead>
+            <TableHead className="font-medium">Received</TableHead>
+            <TableHead className="font-medium">Pending</TableHead>
             <TableHead className="text-right font-medium">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -151,7 +191,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
           {loading ? (
             <TableSkletonRows rowsCount={5} colsCount={4} />
           ) : (
-            values?.map((memberObj: any) => (
+            values?.map((memberObj) => (
               <TableRow key={memberObj.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
@@ -160,7 +200,21 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                   </div>
                 </TableCell>
                 <TableCell>{memberObj?.mobile}</TableCell>
-                <TableCell>{`${memberObj?.payments_count ?? 0} / 20`}</TableCell>
+                <TableCell>
+                  <PaymentsBadge
+                    count={memberObj?.payments_count ?? 0}
+                    total={chitDetails?.months ?? 20}
+                  />
+                </TableCell>
+                <TableCell className="font-medium tabular-nums text-green-700 dark:text-green-400">
+                  {formatAmount(memberObj?.payments_received ?? 0)}
+                </TableCell>
+                <TableCell className="font-medium tabular-nums text-amber-600 dark:text-amber-400">
+                  {formatAmount(
+                    totalChitPaymentAmountPerUser -
+                      (memberObj?.payments_received ?? 0),
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <ActionMenu member={memberObj} />
                 </TableCell>

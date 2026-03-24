@@ -50,6 +50,40 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PUT(req: Request) {
+  try {
+    const supabase = await createClient();
+    const { id, name, auction_date } = await req.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Month id is required" },
+        { status: 400 },
+      );
+    }
+
+    const { error, data } = await supabase
+      .from("months")
+      .update({ name, auction_date })
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, values: data });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to update month" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const supabase = await createClient();
@@ -62,11 +96,17 @@ export async function DELETE(req: Request) {
       );
     }
 
+    // delete payments before deleting months
+    const { error: paymentError } = await supabase
+      .from("payments")
+      .delete()
+      .eq("month_id", id);
+
     const { error } = await supabase.from("months").delete().eq("id", id);
 
-    if (error) {
+    if (error || paymentError) {
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: error?.message ?? paymentError?.message },
         { status: 500 },
       );
     }
