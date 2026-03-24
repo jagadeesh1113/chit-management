@@ -12,7 +12,7 @@ const ChitDetailsContainer = async ({
   const { id } = await params;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <ChitProvider chitId={id}>
         <ChitDetails id={id} />
       </ChitProvider>
@@ -30,7 +30,7 @@ export default async function Page({
       <Navigation />
       <Suspense
         fallback={
-          <div className="mx-auto max-w-5xl px-4 py-12 text-center text-sm text-muted-foreground">
+          <div className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-muted-foreground">
             Loading chit details…
           </div>
         }

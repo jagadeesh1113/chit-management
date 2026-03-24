@@ -28,7 +28,7 @@ export interface ChitMonth {
   name: string;
   auction_date: string;
   auction_amount: number;
-  auction_user: string | null;
+  auction_user: string;
   chit_id: string;
   created_by: string;
   payments_count: number;
@@ -58,6 +58,13 @@ export interface PaymentEntry {
 // ── Context shapes ────────────────────────────────────────────────────────────
 export interface MemberContextValue {
   values: Member[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+export interface MonthContextValue {
+  values: ChitMonth[];
   loading: boolean;
   error: string | null;
   refetch: () => void;

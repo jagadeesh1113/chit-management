@@ -63,3 +63,27 @@ export const formatDate = (dateStr: string | null | undefined): string => {
 export const formatAmount = (amount: number) => {
   return fmt.format(amount);
 };
+
+export const getAuctionUserPayableAmount = ({
+  chit,
+  month,
+}: {
+  chit: Chit | null;
+  month: ChitMonth;
+}) => {
+  if (!chit) {
+    return;
+  }
+  if (month?.is_owner_auction) {
+    return chit.amount - month.auction_amount;
+  }
+  return (
+    chit.amount -
+    month.auction_amount -
+    getMonthlyPaymentAmount({
+      chit,
+      month,
+      isOwnerAuction: month?.is_owner_auction,
+    })
+  );
+};

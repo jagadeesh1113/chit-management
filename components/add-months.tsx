@@ -33,6 +33,7 @@ import {
   getNumericAmountWithoutCurrency,
 } from "@/lib/utils";
 import { ChitMonth, Member } from "@/types";
+import { ChitMonthContext } from "@/context/MonthContext";
 
 export const AddMonths = ({
   chitId,
@@ -43,6 +44,7 @@ export const AddMonths = ({
 }) => {
   const { values: members } = React.useContext(MemberContext);
   const { chitDetails } = React.useContext(ChitContext);
+  const { values: chitMonths } = React.useContext(ChitMonthContext);
 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -71,7 +73,7 @@ export const AddMonths = ({
 
   const chitAmount = Number(chitDetails?.amount ?? 0);
   const chitCharges = Number(chitDetails?.charges ?? 0);
-  const chitMonths = Number(chitDetails?.months ?? 1);
+  const numOfMonths = Number(chitDetails?.months ?? 1);
   const parsedAuction = Number(
     (auctionAmount ?? "").replace(/[₹,\s]/g, "") || 0,
   );
@@ -80,8 +82,8 @@ export const AddMonths = ({
   const isOwner = auctionMember?.owner ?? false;
 
   const amountPerMember = isOwner
-    ? chitAmount / chitMonths
-    : (chitAmount - parsedAuction + chitCharges) / chitMonths;
+    ? chitAmount / numOfMonths
+    : (chitAmount - parsedAuction + chitCharges) / numOfMonths;
 
   const showPreview = parsedAuction >= 0 && auctionUser;
 
@@ -275,6 +277,9 @@ export const AddMonths = ({
                   onChange={(value) => setAuctionUser(value)}
                   value={auctionUser}
                   className="pl-8"
+                  excludeMemberIds={
+                    chitMonths?.map((monthObj) => monthObj.auction_user) ?? []
+                  }
                 />
               </div>
             </div>

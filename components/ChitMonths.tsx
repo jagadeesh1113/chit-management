@@ -8,7 +8,6 @@ import {
   TableRow,
 } from "./ui/table";
 import { TableSkletonRows } from "./table-skleton-rows";
-import { useFetchChitMonths } from "@/hooks/use-fetch-chit-months";
 import { AddMonths } from "./add-months";
 import React from "react";
 import { MemberContext } from "@/context/MemberContext";
@@ -33,6 +32,8 @@ import { DeleteMonthDialog } from "./delete-month-dialog";
 import { Skeleton } from "./ui/skeleton";
 import { ChitMonth } from "@/types";
 import { ChitContext } from "@/context/ChitContext";
+import { ChitMonthContext } from "@/context/MonthContext";
+import { getAuctionUserPayableAmount } from "@/lib/utils";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -74,10 +75,10 @@ const PaymentsBadge = ({ count, total }: { count: number; total: number }) => {
 
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const {
-    loading,
     values,
+    loading,
     refetch: fetchChitMonths,
-  } = useFetchChitMonths(chitId);
+  } = React.useContext(ChitMonthContext);
   const { values: members } = React.useContext(MemberContext);
   const { chitDetails } = React.useContext(ChitContext);
 
@@ -130,9 +131,10 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
           const memberDetails = members?.find(
             (m) => m?.id === auctionObj?.auction_user,
           );
-          const payableAmount = chitDetails?.amount
-            ? chitDetails.amount - auctionObj.auction_amount
-            : null;
+          const payableAmount = getAuctionUserPayableAmount({
+            chit: chitDetails,
+            month: auctionObj,
+          });
 
           return (
             <div
@@ -203,7 +205,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                       Payable
                     </p>
                     <p className="text-xs font-semibold mt-0.5 tabular-nums">
-                      {payableAmount !== null ? fmt.format(payableAmount) : "-"}
+                      {!!payableAmount ? fmt.format(payableAmount) : "-"}
                     </p>
                   </div>
                   <div className="px-3 py-2.5">
@@ -273,6 +275,10 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
               const memberDetails = members?.find(
                 (m) => m?.id === auctionObj?.auction_user,
               );
+              const payableAmount = getAuctionUserPayableAmount({
+                chit: chitDetails,
+                month: auctionObj,
+              });
 
               return (
                 <TableRow
@@ -293,11 +299,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     {fmt.format(auctionObj.auction_amount)}
                   </TableCell>
                   <TableCell className="font-medium tabular-nums">
-                    {chitDetails?.amount
-                      ? fmt.format(
-                          chitDetails.amount - auctionObj.auction_amount,
-                        )
-                      : "-"}
+                    {payableAmount ? fmt.format(payableAmount) : "-"}
                   </TableCell>
                   <TableCell className="font-medium tabular-nums text-green-700 dark:text-green-400">
                     {fmt.format(auctionObj?.payments_received)}
