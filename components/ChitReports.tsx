@@ -5,13 +5,24 @@ import { Card, CardContent } from "./ui/card";
 import { MemberContext } from "@/context/MemberContext";
 import { ChitMonthContext } from "@/context/MonthContext";
 import { ChitContext } from "@/context/ChitContext";
+import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
 import { getMonthlyPaymentAmount } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Line,
+  LineChart,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -40,6 +51,21 @@ export const ChitReports = () => {
 
   const loading = membersLoading || monthsLoading;
   const [isMobile, setIsMobile] = React.useState(false);
+  const [selectedMonthId, setSelectedMonthId] = React.useState("");
+
+  React.useEffect(() => {
+    if (!selectedMonthId && months.length > 0) {
+      setSelectedMonthId(months[0].id);
+    }
+  }, [months, selectedMonthId]);
+
+  const selectedMonth = React.useMemo(
+    () => months.find((m) => m.id === selectedMonthId) ?? null,
+    [months, selectedMonthId],
+  );
+
+  const { values: selectedMonthPayments, loading: monthPaymentsLoading } =
+    useFetchChitPayments(selectedMonthId, chitDetails?.id ?? "");
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 640px)");
@@ -75,6 +101,42 @@ export const ChitReports = () => {
     () => Math.max(520, monthChartData.length * 84),
     [monthChartData.length],
   );
+  const paymentTimelineData = React.useMemo(() => {
+    const groupedByDate = selectedMonthPayments
+      .flatMap((memberPayment) => memberPayment.payments ?? [])
+      .filter((payment) => !!payment?.payment_date)
+      .reduce<Record<string, number>>((acc, payment) => {
+        const key = payment.payment_date as string;
+        acc[key] = (acc[key] ?? 0) + (payment.amount ?? 0);
+        return acc;
+      }, {});
+
+    let initialValue = 0;
+    return Object.entries(groupedByDate)
+      .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+      .map(([date, amount]) => {
+        initialValue += amount;
+        return {
+          date,
+          label: new Date(date).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+          }),
+          amount: initialValue,
+        };
+      });
+  }, [selectedMonthPayments]);
+
+  const selectedMonthTargetAmount = React.useMemo(() => {
+    if (!selectedMonth) return 0;
+    const monthlyPaymentAmount = getMonthlyPaymentAmount({
+      chit: chitDetails,
+      month: selectedMonth,
+      isOwnerAuction: selectedMonth?.is_owner_auction,
+    });
+    const totalMembers = Number(chitDetails?.members ?? members.length ?? 0);
+    return monthlyPaymentAmount * totalMembers;
+  }, [selectedMonth, chitDetails, members.length]);
 
   return (
     <div className="space-y-4">
@@ -191,6 +253,134 @@ export const ChitReports = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-none">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-sm font-semibold">Monthly Payment Timeline</h3>
+            <Select value={selectedMonthId} onValueChange={setSelectedMonthId}>
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month.id} value={month.id}>
+                    {month.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Amount vs payment date{" "}
+            {selectedMonth?.name ? `for ${selectedMonth.name}` : ""}
+          </p>
+
+          <div className="h-64 sm:h-72">
+            {monthPaymentsLoading || loading ? (
+              <Skeleton className="h-full w-full" />
+            ) : paymentTimelineData.length === 0 ? (
+              <div className="h-full rounded-md border border-dashed border-border flex items-center justify-center text-sm text-muted-foreground">
+                No dated payments available for selected month.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={paymentTimelineData}
+                  margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    fontSize={isMobile ? 10 : 12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    fontSize={isMobile ? 10 : 12}
+                    tickLine={false}
+                    axisLine={false}
+                    width={isMobile ? 36 : 48}
+                    tickFormatter={(value: number) =>
+                      compactCurrencyFormatter.format(value)
+                    }
+                  />
+                  <Tooltip
+                    cursor={{
+                      stroke: "hsl(var(--muted-foreground))",
+                      strokeDasharray: "4 4",
+                    }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const point = payload[0]?.payload as
+                        | { amount: number; date: string }
+                        | undefined;
+                      if (!point) return null;
+                      return (
+                        <div className="max-w-[220px] rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-md">
+                          <p className="font-medium text-foreground mb-1">
+                            {label}
+                          </p>
+                          <p className="text-muted-foreground">
+                            Date:{" "}
+                            <span className="font-medium text-foreground">
+                              {new Date(point.date).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
+                            </span>
+                          </p>
+                          <p className="text-muted-foreground">
+                            Amount:{" "}
+                            <span className="font-medium text-foreground">
+                              {currencyFormatter.format(point.amount)}
+                            </span>
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend
+                    iconSize={10}
+                    wrapperStyle={{
+                      fontSize: isMobile ? "11px" : "12px",
+                      paddingTop: "8px",
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="amount"
+                    name="Payment Amount"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <ReferenceLine
+                    y={selectedMonthTargetAmount}
+                    stroke="#d97706"
+                    strokeDasharray="6 4"
+                    strokeWidth={1.5}
+                    ifOverflow="extendDomain"
+                    label={{
+                      value: "Target",
+                      position: "insideTopRight",
+                      fill: "#d97706",
+                      fontSize: 11,
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
