@@ -28,6 +28,7 @@ export const ChitMemberSelect = ({
   const renderSelectOption = () => {
     return values
       ?.filter((memberObj) => !excludeMemberIds?.includes(memberObj?.id))
+      ?.sort((a, b) => a.name.localeCompare(b.name))
       ?.map((memberObj: Member) => {
         return (
           <SelectItem key={memberObj.id} value={memberObj.id}>

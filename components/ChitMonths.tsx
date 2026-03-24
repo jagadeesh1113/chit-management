@@ -33,7 +33,10 @@ import { Skeleton } from "./ui/skeleton";
 import { ChitMonth } from "@/types";
 import { ChitContext } from "@/context/ChitContext";
 import { ChitMonthContext } from "@/context/MonthContext";
-import { getAuctionUserPayableAmount } from "@/lib/utils";
+import {
+  getAuctionUserPayableAmount,
+  getMonthlyPaymentAmount,
+} from "@/lib/utils";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -135,6 +138,11 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             chit: chitDetails,
             month: auctionObj,
           });
+          const monthlyPaymentAmount = getMonthlyPaymentAmount({
+            chit: chitDetails,
+            month: auctionObj,
+            isOwnerAuction: auctionObj?.is_owner_auction,
+          });
 
           return (
             <div
@@ -189,7 +197,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
               {/* Stats row */}
               <div className="border-t border-border">
                 {/* Money row */}
-                <div className="grid grid-cols-3 divide-x divide-border">
+                <div className="grid grid-cols-2 divide-x divide-y divide-border">
                   <div className="px-3 py-2.5">
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <IndianRupeeIcon className="size-3" />
@@ -197,6 +205,15 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     </p>
                     <p className="text-xs font-semibold mt-0.5 tabular-nums">
                       {fmt.format(auctionObj.auction_amount)}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Amount / Person
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums">
+                      {fmt.format(monthlyPaymentAmount)}
                     </p>
                   </div>
                   <div className="px-3 py-2.5">
@@ -260,6 +277,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             <TableHead className="font-medium">Month</TableHead>
             <TableHead className="font-medium">Auction Date</TableHead>
             <TableHead className="font-medium">Auction Amount</TableHead>
+            <TableHead className="font-medium">Amount / Person</TableHead>
             <TableHead className="font-medium">Payable Amount</TableHead>
             <TableHead className="font-medium">Payment Received</TableHead>
             <TableHead className="font-medium">Winner</TableHead>
@@ -269,7 +287,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableSkletonRows rowsCount={5} colsCount={7} />
+            <TableSkletonRows rowsCount={5} colsCount={8} />
           ) : (
             values?.map((auctionObj: ChitMonth) => {
               const memberDetails = members?.find(
@@ -278,6 +296,11 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
               const payableAmount = getAuctionUserPayableAmount({
                 chit: chitDetails,
                 month: auctionObj,
+              });
+              const monthlyPaymentAmount = getMonthlyPaymentAmount({
+                chit: chitDetails,
+                month: auctionObj,
+                isOwnerAuction: auctionObj?.is_owner_auction,
               });
 
               return (
@@ -297,6 +320,9 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                   </TableCell>
                   <TableCell className="font-medium tabular-nums">
                     {fmt.format(auctionObj.auction_amount)}
+                  </TableCell>
+                  <TableCell className="font-medium tabular-nums">
+                    {fmt.format(monthlyPaymentAmount)}
                   </TableCell>
                   <TableCell className="font-medium tabular-nums">
                     {payableAmount ? fmt.format(payableAmount) : "-"}
