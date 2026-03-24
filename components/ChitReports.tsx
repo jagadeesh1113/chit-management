@@ -28,6 +28,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Button } from "./ui/button";
+import { RefreshCcwIcon } from "lucide-react";
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -43,10 +45,13 @@ const compactCurrencyFormatter = new Intl.NumberFormat("en-IN", {
 });
 
 export const ChitReports = () => {
-  const { values: members, loading: membersLoading } =
+  const { values: members, loading: membersLoading, refetch: refetchMembers } =
     React.useContext(MemberContext);
-  const { values: months, loading: monthsLoading } =
-    React.useContext(ChitMonthContext);
+  const {
+    values: months,
+    loading: monthsLoading,
+    refetch: refetchMonths,
+  } = React.useContext(ChitMonthContext);
   const { chitDetails } = React.useContext(ChitContext);
 
   const loading = membersLoading || monthsLoading;
@@ -66,6 +71,11 @@ export const ChitReports = () => {
 
   const { values: selectedMonthPayments, loading: monthPaymentsLoading } =
     useFetchChitPayments(selectedMonthId, chitDetails?.id ?? "");
+  const isRefreshing = loading || monthPaymentsLoading;
+
+  const handleRefreshReports = async () => {
+    await Promise.all([refetchMembers(), refetchMonths()]);
+  };
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 640px)");
@@ -140,6 +150,20 @@ export const ChitReports = () => {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefreshReports}
+          disabled={isRefreshing}
+          className="h-8 px-2 sm:px-3"
+        >
+          <RefreshCcwIcon
+            className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+          <span className="hidden sm:inline">Refresh</span>
+        </Button>
+      </div>
       <div className="grid min-w-0 gap-4 xl:grid-cols-3">
         <Card className="min-w-0 shadow-none xl:col-span-2">
           <CardContent className="min-w-0 p-4">

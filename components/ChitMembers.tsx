@@ -22,7 +22,7 @@ import { TableSkletonRows } from "./table-skleton-rows";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { MemberContext } from "@/context/MemberContext";
-import { MoreHorizontalIcon, PhoneIcon } from "lucide-react";
+import { MoreHorizontalIcon, PhoneIcon, RefreshCcwIcon } from "lucide-react";
 import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
 import { OwnerBadge, CountBadge } from "./custom-badges";
@@ -236,7 +236,21 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
             ({values.length})
           </span>
         </h2>
-        <AddMembers chitId={chitId} refetch={refetch} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            disabled={loading}
+            className="h-8 px-2 sm:px-3"
+          >
+            <RefreshCcwIcon
+              className={`size-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+          <AddMembers chitId={chitId} refetch={refetch} />
+        </div>
       </div>
       <MobileList />
       <DesktopTable />

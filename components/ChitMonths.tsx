@@ -20,6 +20,7 @@ import {
   IndianRupeeIcon,
   UsersIcon,
   MoreHorizontalIcon,
+  RefreshCcwIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -396,7 +397,21 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold sm:text-base">Chit Months</h2>
-        <AddMonths chitId={chitId} refetch={fetchChitMonths} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchChitMonths}
+            disabled={loading}
+            className="h-8 px-2 sm:px-3"
+          >
+            <RefreshCcwIcon
+              className={`size-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+          <AddMonths chitId={chitId} refetch={fetchChitMonths} />
+        </div>
       </div>
       <MobileList />
       <DesktopTable />
