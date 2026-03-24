@@ -16,6 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import React from "react";
+import { ChitMonthProvider } from "@/context/MonthContext";
 
 const formatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -83,26 +84,28 @@ export const ChitDetails = ({ id }: { id: string }) => {
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <MemberProvider chitId={id}>
-        <Tabs defaultValue="members">
-          <TabsList>
-            <TabsTrigger value="members">
-              <UsersIcon className="size-3.5" />
-              Members
-            </TabsTrigger>
-            <TabsTrigger value="months">
-              <CalendarDaysIcon className="size-3.5" />
-              Months
-            </TabsTrigger>
-          </TabsList>
+        <ChitMonthProvider chitId={id}>
+          <Tabs defaultValue="members">
+            <TabsList>
+              <TabsTrigger value="members">
+                <UsersIcon className="size-3.5" />
+                Members
+              </TabsTrigger>
+              <TabsTrigger value="months">
+                <CalendarDaysIcon className="size-3.5" />
+                Months
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="members">
-            <ChitMembers chitId={id} />
-          </TabsContent>
+            <TabsContent value="members">
+              <ChitMembers chitId={id} />
+            </TabsContent>
 
-          <TabsContent value="months">
-            <ChitMonths chitId={id} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="months">
+              <ChitMonths chitId={id} />
+            </TabsContent>
+          </Tabs>
+        </ChitMonthProvider>
       </MemberProvider>
     </div>
   );

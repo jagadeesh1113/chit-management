@@ -7,6 +7,7 @@ export interface Member {
   chit_id: string;
   created_by: string;
   payments_count?: number;
+  payments_received?: number;
 }
 
 // ── Chit ──────────────────────────────────────────────────────────────────────
@@ -28,30 +29,43 @@ export interface ChitMonth {
   name: string;
   auction_date: string;
   auction_amount: number;
-  auction_user: string | null;
+  auction_user: string;
   chit_id: string;
   created_by: string;
   payments_count: number;
+  is_owner_auction?: boolean;
+  payments_received: number;
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
 export type PaymentType = "cash" | "cheque" | "bank_transfer";
 
 export interface Payment {
-  payment_id: string;
+  member_id: string;
   name: string;
   mobile: string;
+  owner?: boolean;
+  payments: PaymentEntry[];
+}
+
+export interface PaymentEntry {
   amount: number;
-  payment_status: boolean;
   payment_date: string | null;
   payment_type: PaymentType | null;
-  member_id: string;
   month_id: string;
+  payment_id: string;
 }
 
 // ── Context shapes ────────────────────────────────────────────────────────────
 export interface MemberContextValue {
   values: Member[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+export interface MonthContextValue {
+  values: ChitMonth[];
   loading: boolean;
   error: string | null;
   refetch: () => void;

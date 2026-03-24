@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PAYMENT_TYPES } from "@/constants";
-import { Chit, ChitMonth, Payment, PaymentType } from "@/types";
+import { cn, getNumericAmountWithoutCurrency } from "@/lib/utils";
+import { PaymentEntry, PaymentType } from "@/types";
 import {
   BanknoteIcon,
   CalendarIcon,
@@ -9,61 +10,42 @@ import {
   XIcon,
 } from "lucide-react";
 import React from "react";
-import { Input } from "./ui/input";
-import {
-  cn,
-  getMonthlyPaidAmount,
-  getMonthlyPaymentAmount,
-  getNumericAmountWithoutCurrency,
-} from "@/lib/utils";
-import { Button } from "./ui/button";
-import { toast } from "sonner";
 import CurrencyInput from "react-currency-input-field";
+import { toast } from "sonner";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 
-export const MarkPaidForm = ({
+export const EditPaymentForm = ({
+  entry,
   onCancel,
-  refetch,
-  paymentObj,
-  setExpandedId,
-  chit,
-  month,
+  onSaved,
 }: {
+  entry: PaymentEntry;
   onCancel: () => void;
-  refetch?: () => void;
-  paymentObj: Payment;
-  setExpandedId: (_id: string | null) => void;
-  month?: ChitMonth | null;
-  chit?: Chit | null;
+  onSaved: () => void;
 }) => {
-  const today = new Date().toISOString().split("T")[0];
-  const [date, setDate] = React.useState(today);
-  const [type, setType] = React.useState<PaymentType>("cash");
-  const [amount, setAmount] = React.useState<string>(() =>
-    (
-      getMonthlyPaymentAmount({
-        month,
-        chit,
-        isOwnerAuction: month?.is_owner_auction,
-      }) - getMonthlyPaidAmount(paymentObj)
-    )?.toString(),
+  const [date, setDate] = React.useState(() =>
+    entry.payment_date ? entry.payment_date.split("T")[0] : undefined,
   );
+  const [type, setType] = React.useState<PaymentType>(
+    entry.payment_type ?? "cash",
+  );
+  const [amount, setAmount] = React.useState(String(entry.amount ?? ""));
   const [typeOpen, setTypeOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const selectedType = PAYMENT_TYPES.find((t) => t.value === type)!;
 
-  const handleMarkPaid = async () => {
+  const handleSave = async () => {
     setSubmitting(true);
     setError(null);
     try {
       const res = await fetch("/api/payments", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          member_id: paymentObj.member_id,
-          chit_id: chit?.id,
-          month_id: month?.id,
+          payment_id: entry.payment_id,
           payment_date: date,
           payment_type: type,
           amount: getNumericAmountWithoutCurrency(amount),
@@ -71,9 +53,8 @@ export const MarkPaidForm = ({
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Payment marked as paid", { position: "top-right" });
-        setExpandedId(null);
-        refetch?.();
+        toast.success("Payment updated", { position: "top-right" });
+        onSaved();
       } else {
         setError(data.error ?? "Failed to update payment");
       }
@@ -85,11 +66,11 @@ export const MarkPaidForm = ({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3 w-full">
+    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2.5 mt-1">
       {/* Amount */}
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Amount paid
+          Amount
         </label>
         <div className="relative">
           <BanknoteIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none z-10" />
@@ -97,13 +78,12 @@ export const MarkPaidForm = ({
             value={amount}
             onValueChange={(val) => setAmount(val ?? "")}
             intlConfig={{ locale: "en-IN", currency: "INR" }}
-            prefix={""}
+            prefix=""
             customInput={Input}
             className="pl-8 h-8 text-sm"
             onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
             onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
             onTouchStart={(e: React.TouchEvent) => e.stopPropagation()}
-            required
           />
         </div>
       </div>
@@ -111,7 +91,7 @@ export const MarkPaidForm = ({
       {/* Date */}
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Payment date
+          Date
         </label>
         <div className="relative">
           <CalendarIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
@@ -122,20 +102,17 @@ export const MarkPaidForm = ({
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            required
             className="pl-8 h-8 text-sm"
           />
         </div>
       </div>
 
-      {/* Payment type */}
+      {/* Payment type — pill buttons on mobile */}
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Payment type
+          Type
         </label>
-
-        {/* Pill buttons on mobile */}
-        <div className="flex gap-1.5 sm:hidden flex-wrap">
+        <div className="flex gap-1.5 flex-wrap sm:hidden">
           {PAYMENT_TYPES.map((t) => (
             <button
               key={t.value}
@@ -189,19 +166,18 @@ export const MarkPaidForm = ({
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
 
-      {/* Action buttons */}
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-2 pt-0.5">
         <Button
           type="button"
           size="sm"
           className="flex-1 h-8 gap-1 text-xs"
-          disabled={submitting || !date}
-          onClick={handleMarkPaid}
+          disabled={submitting || !date || !amount}
+          onClick={handleSave}
         >
           <CheckIcon className="size-3.5" />
-          {submitting ? "Saving…" : "Confirm"}
+          {submitting ? "Saving…" : "Save"}
         </Button>
         <Button
           type="button"

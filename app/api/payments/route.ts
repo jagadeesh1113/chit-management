@@ -6,25 +6,23 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient();
 
-    const { members, amountPerMember, chit_id, month_id } = await req.json();
+    const { amount, chit_id, month_id, payment_date, member_id, payment_type } =
+      await req.json();
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const payments = members.map((memberObj: any) => {
-      return {
-        member_id: memberObj?.id,
-        amount: amountPerMember,
-        payment_status: memberObj?.owner ? true : false,
-        chit_id,
-        month_id,
-        created_by: user?.id,
-      };
-    });
-
     // Store chunk with embedding in database
-    const { error, data } = await supabase.from("payments").insert(payments);
+    const { error, data } = await supabase.from("payments").insert({
+      member_id,
+      amount: amount,
+      chit_id,
+      month_id,
+      created_by: user?.id,
+      payment_date,
+      payment_type,
+    });
 
     if (error) {
       return NextResponse.json(
@@ -55,12 +53,13 @@ export async function PUT(req: Request) {
   try {
     const supabase = await createClient();
 
-    const { payment_id, payment_status, payment_date, payment_type } =
+    const { payment_id, payment_status, payment_date, payment_type, amount } =
       await req.json();
 
     const updatePayload: Record<string, any> = { payment_status };
     if (payment_date !== undefined) updatePayload.payment_date = payment_date;
     if (payment_type !== undefined) updatePayload.payment_type = payment_type;
+    if (amount !== undefined) updatePayload.amount = amount;
 
     const { error, data } = await supabase
       .from("payments")
@@ -93,10 +92,44 @@ export async function PUT(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const supabase = await createClient();
+    const { payment_id } = await req.json();
+
+    if (!payment_id) {
+      return NextResponse.json(
+        { success: false, error: "Payment id is required" },
+        { status: 400 },
+      );
+    }
+
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("id", payment_id);
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete payment" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const reqUrl = new URL(req.url);
     const monthId = reqUrl.searchParams.get("monthId");
+    const chitId = reqUrl.searchParams.get("chitId");
 
     if (!monthId) {
       return NextResponse.json(
@@ -108,9 +141,10 @@ export async function GET(req: Request) {
     const supabase = await createClient();
 
     const { data: results, error } = await supabase.rpc(
-      "get_chit_payments_v11",
+      "get_chit_payments_v20",
       {
         selected_month_id: monthId,
+        selected_chit_id: chitId,
       },
     );
 

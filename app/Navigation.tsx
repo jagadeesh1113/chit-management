@@ -32,7 +32,7 @@ const ChitIcon = ({ size = 28 }: { size?: number }) => (
 export const Navigation = () => {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <ChitIcon size={30} />
           <span className="font-semibold text-sm sm:text-base tracking-tight">Manage Chit</span>

@@ -7,7 +7,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <AuthProvider>
         <Navigation />
-        <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
           <Chits />
         </main>
       </AuthProvider>

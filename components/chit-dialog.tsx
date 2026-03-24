@@ -22,11 +22,11 @@ import CurrencyInput from "react-currency-input-field";
 import {
   PlusIcon,
   TagIcon,
-  IndianRupeeIcon,
   UsersIcon,
   CalendarDaysIcon,
   CalendarIcon,
   InfoIcon,
+  BanknoteIcon,
 } from "lucide-react";
 import { IconInput } from "./ui/icon-input";
 
@@ -272,7 +272,7 @@ export function AddOrUpdateChit({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <FieldLabel htmlFor="amount">Chit amount</FieldLabel>
-                <IconInput icon={<IndianRupeeIcon className="size-3.5" />}>
+                <IconInput icon={<BanknoteIcon className="size-3.5" />}>
                   <CurrencyInput
                     id="amount"
                     name="amount"
@@ -288,7 +288,7 @@ export function AddOrUpdateChit({
               </div>
               <div className="space-y-1.5">
                 <FieldLabel htmlFor="charges">Charges / month</FieldLabel>
-                <IconInput icon={<IndianRupeeIcon className="size-3.5" />}>
+                <IconInput icon={<BanknoteIcon className="size-3.5" />}>
                   <CurrencyInput
                     id="charges"
                     name="charges"

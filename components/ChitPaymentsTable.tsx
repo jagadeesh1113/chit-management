@@ -11,32 +11,20 @@ import {
   TableRow,
 } from "./ui/table";
 import { TableSkletonRows } from "./table-skleton-rows";
-import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import React from "react";
 import { toast } from "sonner";
-import { CheckIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { CheckIcon, XIcon, ReceiptIcon, ChevronDownIcon } from "lucide-react";
+import {
+  cn,
+  formatAmount,
+  getMonthlyPaidAmount,
+  getMonthlyPaymentAmount,
+} from "@/lib/utils";
 import type { Payment, ChitMonth, Chit } from "@/types";
-import { PAYMENT_TYPES } from "@/constants";
 import { MarkPaidForm } from "./mark-paid-form";
-
-// ── Formatters ───────────────────────────────────────────────────────────────
-const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const fmt = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
+import { PaymentHistory } from "./payment-history";
+import { OwnerBadge, PaymentStatusBadge } from "./custom-badges";
 
 // ── WhatsApp SVG icon ────────────────────────────────────────────────
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -51,10 +39,6 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 // ── WhatsApp reminder helper ────────────────────────────────────────────────
-const fmtINR = (n: number) =>
-  new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: 0,
-  }).format(n);
 
 const fmtDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -86,16 +70,16 @@ const openWhatsApp = (
       `Hi ${name},`,
       ``,
       `${auctionDate}`,
-      `Chits ${fmtINR(chit.amount)}, ${month.name}`,
-      `Auction Amount: ${fmtINR(auctionAmount)}`,
-      `Dividend Per Member: ${fmtINR(dividendPerMember)}`,
-      `Payable Amount Per Person: ${fmtINR(payablePerPerson)}`,
+      `Chits ${formatAmount(chit.amount)}, ${month.name}`,
+      `Auction Amount: ${formatAmount(auctionAmount)}`,
+      `Dividend Per Member: ${formatAmount(dividendPerMember)}`,
+      `Payable Amount Per Person: ${formatAmount(payablePerPerson)}`,
       ``,
       `Thank you!`,
     ].join("\n");
   } else {
     // Fallback if month/chit context isn't available
-    message = `Hi ${name}, your chit payment of ₹${fmtINR(payableAmount)} is due. Please make the payment at the earliest. Thank you!`;
+    message = `Hi ${name}, your chit payment of ₹${formatAmount(payableAmount)} is due. Please make the payment at the earliest. Thank you!`;
   }
 
   const number = mobile.replace(/\D/g, "");
@@ -104,24 +88,6 @@ const openWhatsApp = (
     "_blank",
   );
 };
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-const PaymentStatus = ({ status }: { status: boolean }) => {
-  if (status) {
-    return (
-      <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 text-xs">
-        Paid
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 text-xs">
-      Unpaid
-    </Badge>
-  );
-};
-
-// ── Inline mark-as-paid form ──────────────────────────────────────────────────
 
 // ── Main component ────────────────────────────────────────────────────────────
 export const ChitPaymentsTable = ({
@@ -139,6 +105,20 @@ export const ChitPaymentsTable = ({
 }) => {
   const [error, setError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = React.useState<
+    string | null
+  >(null);
+
+  const toggleHistory = (id: string) =>
+    setExpandedHistoryId((prev) => (prev === id ? null : id));
+
+  const monthlyPaymentAmount = React.useMemo(() => {
+    return getMonthlyPaymentAmount({
+      month,
+      chit,
+      isOwnerAuction: month?.is_owner_auction,
+    });
+  }, [month, chit]);
 
   const toggleExpand = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -146,14 +126,13 @@ export const ChitPaymentsTable = ({
   const handleMarkUnpaid = async (paymentObj: Payment) => {
     setError(null);
     try {
-      const res = await fetch("/api/payments", {
-        method: "PUT",
+      const res = await fetch("/api/payments/bulk", {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          payment_id: paymentObj.payment_id,
-          payment_status: false,
-          payment_date: null,
-          payment_type: null,
+          member_id: paymentObj?.member_id,
+          chit_id: chit?.id,
+          month_id: month?.id,
         }),
       });
       const data = await res.json();
@@ -202,12 +181,15 @@ export const ChitPaymentsTable = ({
             .toUpperCase()
             .slice(0, 2);
 
-          const isPaid = paymentObj.payment_status;
-          const isExpanded = expandedId === paymentObj.payment_id;
+          const paidAmount = getMonthlyPaidAmount(paymentObj);
+          const pendingAmount = Math.max(0, monthlyPaymentAmount - paidAmount);
+          const isPaid = pendingAmount === 0;
+          const isPartial = !isPaid && paidAmount > 0;
+          const isExpanded = expandedId === paymentObj.member_id;
 
           return (
             <div
-              key={paymentObj.payment_id}
+              key={paymentObj.member_id}
               className={cn(
                 "rounded-xl border bg-card overflow-hidden transition-colors",
                 isPaid
@@ -230,39 +212,74 @@ export const ChitPaymentsTable = ({
                 </div>
 
                 {/* Name + meta */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate leading-tight">
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="text-sm font-medium truncate leading-tight">
                     {paymentObj.name}
-                  </p>
-                  {isPaid && paymentObj.payment_type && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {
-                        PAYMENT_TYPES.find(
-                          (t) => t.value === paymentObj.payment_type,
-                        )?.icon
-                      }{" "}
-                      {
-                        PAYMENT_TYPES.find(
-                          (t) => t.value === paymentObj.payment_type,
-                        )?.label
-                      }
-                      {paymentObj.payment_date && (
-                        <span className="ml-1">
-                          · {formatDate(paymentObj.payment_date)}
-                        </span>
-                      )}
-                    </p>
-                  )}
+                  </span>
+                  {paymentObj?.owner ? <OwnerBadge /> : null}
                 </div>
 
-                {/* Amount + status */}
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-semibold tabular-nums">
-                    {fmt.format(paymentObj.amount)}
-                  </p>
-                  <PaymentStatus status={paymentObj.payment_status} />
+                {/* Status badge */}
+                <div className="shrink-0">
+                  <PaymentStatusBadge status={isPaid} partial={isPartial} />
                 </div>
               </div>
+
+              {/* Amount stats row */}
+              <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
+                <div className="px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Due</p>
+                  <p className="text-xs font-semibold tabular-nums mt-0.5">
+                    {formatAmount(monthlyPaymentAmount)}
+                  </p>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Paid</p>
+                  <p className="text-xs font-semibold tabular-nums mt-0.5 text-green-700 dark:text-green-400">
+                    {paidAmount > 0 ? formatAmount(paidAmount) : "—"}
+                  </p>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Pending</p>
+                  <p
+                    className={`text-xs font-semibold tabular-nums mt-0.5 ${isPaid ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"}`}
+                  >
+                    {isPaid ? "—" : formatAmount(pendingAmount)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment history toggle */}
+              {paymentObj.payments?.length > 0 && (
+                <div className="border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => toggleHistory(paymentObj.member_id)}
+                    className="w-full flex items-center justify-between px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <ReceiptIcon className="size-3" />
+                      {paymentObj.payments.length} payment
+                      {paymentObj.payments.length > 1 ? "s" : ""}
+                    </span>
+                    <ChevronDownIcon
+                      className={cn(
+                        "size-3.5 transition-transform duration-200",
+                        expandedHistoryId === paymentObj.member_id &&
+                          "rotate-180",
+                      )}
+                    />
+                  </button>
+                  {expandedHistoryId === paymentObj.member_id && (
+                    <div className="px-4 pb-3">
+                      <PaymentHistory
+                        payments={paymentObj.payments}
+                        refetch={refetch}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Action strip */}
               {!isPaid && (
@@ -274,7 +291,7 @@ export const ChitPaymentsTable = ({
                       openWhatsApp(
                         paymentObj.mobile,
                         paymentObj.name,
-                        paymentObj.amount,
+                        monthlyPaymentAmount,
                         month,
                         chit,
                       )
@@ -288,7 +305,7 @@ export const ChitPaymentsTable = ({
                   {!isExpanded ? (
                     <button
                       type="button"
-                      onClick={() => toggleExpand(paymentObj.payment_id)}
+                      onClick={() => toggleExpand(paymentObj.member_id)}
                       className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
                     >
                       <CheckIcon className="size-3.5" />
@@ -300,6 +317,8 @@ export const ChitPaymentsTable = ({
                       refetch={refetch}
                       onCancel={() => setExpandedId(null)}
                       setExpandedId={setExpandedId}
+                      chit={chit}
+                      month={month}
                     />
                   )}
                 </div>
@@ -333,108 +352,152 @@ export const ChitPaymentsTable = ({
           <TableRow className="bg-muted/40 hover:bg-muted/40">
             <TableHead className="font-medium">Name</TableHead>
             <TableHead className="font-medium">Amount</TableHead>
+            <TableHead className="font-medium">Paid</TableHead>
+            <TableHead className="font-medium">Pending</TableHead>
             <TableHead className="font-medium">Status</TableHead>
             <TableHead className="text-right font-medium">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableSkletonRows rowsCount={5} colsCount={6} />
+            <TableSkletonRows rowsCount={5} colsCount={8} />
           ) : (
-            values?.map((paymentObj) => (
-              <React.Fragment key={paymentObj.payment_id}>
-                <TableRow>
-                  <TableCell className="font-medium">
-                    {paymentObj.name}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {fmt.format(paymentObj.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <PaymentStatus status={paymentObj.payment_status} />
-                      {paymentObj?.payment_status ? (
-                        <>
-                          {paymentObj.payment_type ? (
-                            <div>
-                              {
-                                PAYMENT_TYPES.find(
-                                  (t) => t.value === paymentObj.payment_type,
-                                )?.icon
-                              }{" "}
-                              {
-                                PAYMENT_TYPES.find(
-                                  (t) => t.value === paymentObj.payment_type,
-                                )?.label
-                              }
-                            </div>
-                          ) : null}
-                          {paymentObj.payment_date ? (
-                            <div>{formatDate(paymentObj.payment_date)}</div>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {paymentObj.payment_status ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarkUnpaid(paymentObj)}
-                        >
-                          Mark Unpaid
-                        </Button>
+            values?.map((paymentObj) => {
+              const paidAmount = getMonthlyPaidAmount(paymentObj);
+              const pendingAmount = Math.max(
+                0,
+                monthlyPaymentAmount - paidAmount,
+              );
+              const isPaid = pendingAmount === 0;
+              const isPartial = !isPaid && paidAmount > 0;
+              return (
+                <React.Fragment key={paymentObj.member_id}>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{paymentObj.name}</span>
+                        {paymentObj?.owner ? <OwnerBadge /> : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium tabular-nums">
+                      {formatAmount(monthlyPaymentAmount)}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-green-700 dark:text-green-400 font-medium">
+                      {paidAmount > 0 ? formatAmount(paidAmount) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {isPaid ? (
+                        <span className="text-sm text-muted-foreground">—</span>
                       ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            className="bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 gap-1.5"
-                            onClick={() =>
-                              openWhatsApp(
-                                paymentObj.mobile,
-                                paymentObj.name,
-                                paymentObj.amount,
-                                month,
-                                chit,
-                              )
-                            }
-                          >
-                            <WhatsAppIcon className="size-3.5" />
-                            Remind
-                          </Button>
+                        <span className="text-sm font-medium tabular-nums text-amber-600 dark:text-amber-400">
+                          {formatAmount(pendingAmount)}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <PaymentStatusBadge
+                          status={isPaid}
+                          partial={isPartial}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {isPaid ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toggleExpand(paymentObj.payment_id)}
+                            onClick={() => handleMarkUnpaid(paymentObj)}
                           >
-                            {expandedId === paymentObj.payment_id
-                              ? "Cancel"
-                              : "Mark Paid"}
+                            Mark Unpaid
                           </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              className="bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 gap-1.5"
+                              onClick={() =>
+                                openWhatsApp(
+                                  paymentObj.mobile,
+                                  paymentObj.name,
+                                  monthlyPaymentAmount,
+                                  month,
+                                  chit,
+                                )
+                              }
+                            >
+                              <WhatsAppIcon className="size-3.5" />
+                              Remind
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleExpand(paymentObj.member_id)}
+                            >
+                              {expandedId === paymentObj.member_id
+                                ? "Cancel"
+                                : "Mark Paid"}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
 
-                {/* Inline form row */}
-                {!paymentObj.payment_status &&
-                  expandedId === paymentObj.payment_id && (
+                  {/* Payment history toggle row */}
+                  {paymentObj.payments?.length > 0 && (
+                    <>
+                      <TableRow
+                        className="bg-muted/10 hover:bg-muted/20 cursor-pointer"
+                        onClick={() => toggleHistory(paymentObj.member_id)}
+                      >
+                        <TableCell colSpan={6} className="py-2 px-6">
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <ReceiptIcon className="size-3" />
+                            {paymentObj.payments.length} payment
+                            {paymentObj.payments.length > 1 ? "s" : ""}
+                            <ChevronDownIcon
+                              className={cn(
+                                "size-3 ml-auto transition-transform duration-200",
+                                expandedHistoryId === paymentObj.member_id &&
+                                  "rotate-180",
+                              )}
+                            />
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                      {expandedHistoryId === paymentObj.member_id && (
+                        <TableRow className="bg-muted/10 hover:bg-muted/10">
+                          <TableCell colSpan={6} className="py-2 px-8 pt-0">
+                            <PaymentHistory
+                              payments={paymentObj.payments}
+                              refetch={refetch}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )}
+
+                  {/* Inline form row */}
+                  {!isPaid && expandedId === paymentObj.member_id && (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-2 px-4 bg-muted/20">
+                      <TableCell colSpan={8} className="py-2 px-4 bg-muted/20">
                         <MarkPaidForm
                           paymentObj={paymentObj}
                           refetch={refetch}
                           onCancel={() => setExpandedId(null)}
                           setExpandedId={setExpandedId}
+                          chit={chit}
+                          month={month}
                         />
                       </TableCell>
                     </TableRow>
                   )}
-              </React.Fragment>
-            ))
+                </React.Fragment>
+              );
+            })
           )}
         </TableBody>
       </Table>

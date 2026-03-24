@@ -8,7 +8,6 @@ import {
   TableRow,
 } from "./ui/table";
 import { TableSkletonRows } from "./table-skleton-rows";
-import { useFetchChitMonths } from "@/hooks/use-fetch-chit-months";
 import { AddMonths } from "./add-months";
 import React from "react";
 import { MemberContext } from "@/context/MemberContext";
@@ -20,8 +19,26 @@ import {
   TrophyIcon,
   IndianRupeeIcon,
   UsersIcon,
+  MoreHorizontalIcon,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { DeleteMonthDialog } from "./delete-month-dialog";
+import { EditMonthDialog } from "./edit-month-dialog";
 import { Skeleton } from "./ui/skeleton";
+import { ChitMonth } from "@/types";
+import { ChitContext } from "@/context/ChitContext";
+import { ChitMonthContext } from "@/context/MonthContext";
+import {
+  getAuctionUserPayableAmount,
+  getMonthlyPaymentAmount,
+} from "@/lib/utils";
+import { PaymentsBadge } from "./custom-badges";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmt = new Intl.NumberFormat("en-IN", {
@@ -40,40 +57,43 @@ const formatDate = (dateStr: string | null | undefined): string => {
   });
 };
 
-// ── Payments progress badge ───────────────────────────────────────────────────
-const PaymentsBadge = ({ count, total }: { count: number; total: number }) => {
-  const allPaid = count === total && total > 0;
-  return (
-    <span
-      className={
-        allPaid
-          ? "inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300"
-          : "inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"
-      }
-    >
-      {allPaid ? (
-        <span className="size-1.5 rounded-full bg-green-500 inline-block" />
-      ) : (
-        <span className="size-1.5 rounded-full bg-amber-400 inline-block" />
-      )}
-      {count} / {total}
-    </span>
-  );
-};
-
 export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const {
-    loading,
     values,
+    loading,
     refetch: fetchChitMonths,
-  } = useFetchChitMonths(chitId);
+  } = React.useContext(ChitMonthContext);
   const { values: members } = React.useContext(MemberContext);
+  const { chitDetails } = React.useContext(ChitContext);
+
   const [selectedMonth, setSelectedMonth] = React.useState<null | any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
+  const [selectedMonthToDelete, setSelectedMonthToDelete] = React.useState<
+    null | any
+  >(null);
+  const [selectedMonthToEdit, setSelectedMonthToEdit] = React.useState<
+    null | any
+  >(null);
 
   const handleSelectMonthlyPayments = (monthObj: any) => {
     setSelectedMonth(monthObj);
     setIsDrawerOpen(true);
+  };
+
+  const handleEditMonth = (monthObj: any) => {
+    setSelectedMonthToEdit(monthObj);
+  };
+
+  const handleResetEdit = () => {
+    setSelectedMonthToEdit(null);
+  };
+
+  const handleDeleteMonth = (monthObj: any) => {
+    setSelectedMonthToDelete(monthObj);
+  };
+
+  const handleResetDelete = () => {
+    setSelectedMonthToDelete(null);
   };
 
   // ── Mobile cards ──────────────────────────────────────────────────────────
@@ -102,11 +122,19 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
 
     return (
       <div className="space-y-2 sm:hidden">
-        {values?.map((auctionObj: any) => {
-          const memberDetails: any = members?.find(
-            (m: any) => m?.id === auctionObj?.auction_user,
+        {values?.map((auctionObj: ChitMonth) => {
+          const memberDetails = members?.find(
+            (m) => m?.id === auctionObj?.auction_user,
           );
-          const hasAuction = !!auctionObj?.auction_amount;
+          const payableAmount = getAuctionUserPayableAmount({
+            chit: chitDetails,
+            month: auctionObj,
+          });
+          const monthlyPaymentAmount = getMonthlyPaymentAmount({
+            chit: chitDetails,
+            month: auctionObj,
+            isOwnerAuction: auctionObj?.is_owner_auction,
+          });
 
           return (
             <div
@@ -124,48 +152,109 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     {formatDate(auctionObj?.auction_date)}
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8 shrink-0"
-                  onClick={() => handleSelectMonthlyPayments(auctionObj)}
-                >
-                  <EyeIcon className="size-3.5" />
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => handleSelectMonthlyPayments(auctionObj)}
+                  >
+                    <EyeIcon className="size-3.5" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-8">
+                        <MoreHorizontalIcon className="size-4" />
+                        <span className="sr-only">More options</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleSelectMonthlyPayments(auctionObj)}
+                      >
+                        View payments
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleEditMonth(auctionObj)}
+                      >
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-red-600 focus:bg-red-100 focus:text-red-600 dark:focus:bg-red-900"
+                        onClick={() => handleDeleteMonth(auctionObj)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               {/* Stats row */}
-              <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
-                <div className="px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <IndianRupeeIcon className="size-3" />
-                    Auction
-                  </p>
-                  <p className="text-xs font-semibold mt-0.5 tabular-nums">
-                    {hasAuction
-                      ? fmt.format(Number(auctionObj.auction_amount))
-                      : "—"}
-                  </p>
+              <div className="border-t border-border">
+                {/* Money row */}
+                <div className="grid grid-cols-2 divide-x divide-y divide-border">
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Auction
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums">
+                      {fmt.format(auctionObj.auction_amount)}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Amount / Person
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums">
+                      {fmt.format(monthlyPaymentAmount)}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Payable
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums">
+                      {!!payableAmount ? fmt.format(payableAmount) : "-"}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <IndianRupeeIcon className="size-3" />
+                      Received
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums text-green-700 dark:text-green-400">
+                      {fmt.format(auctionObj?.payments_received)}
+                    </p>
+                  </div>
                 </div>
-                <div className="px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <TrophyIcon className="size-3" />
-                    Winner
-                  </p>
-                  <p className="text-xs font-semibold mt-0.5 truncate">
-                    {memberDetails?.name ?? "—"}
-                  </p>
-                </div>
-                <div className="px-3 py-2.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <UsersIcon className="size-3" />
-                    Paid
-                  </p>
-                  <div className="mt-0.5">
-                    <PaymentsBadge
-                      count={auctionObj?.payments_count ?? 0}
-                      total={members?.length ?? 20}
-                    />
+
+                {/* Winner + payments row */}
+                <div className="flex items-start justify-between gap-3 px-3 py-2.5 border-t border-border">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <TrophyIcon className="size-3" />
+                      Winner
+                    </p>
+                    <p className="text-xs font-semibold mt-0.5 truncate">
+                      {memberDetails?.name ?? "—"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[11px] text-muted-foreground flex items-center justify-end gap-1">
+                      <UsersIcon className="size-3" />
+                      Paid
+                    </p>
+                    <div className="mt-0.5">
+                      <PaymentsBadge
+                        count={auctionObj?.payments_count ?? 0}
+                        total={chitDetails?.members ?? 20}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -185,6 +274,9 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
             <TableHead className="font-medium">Month</TableHead>
             <TableHead className="font-medium">Auction Date</TableHead>
             <TableHead className="font-medium">Auction Amount</TableHead>
+            <TableHead className="font-medium">Amount / Person</TableHead>
+            <TableHead className="font-medium">Payable Amount</TableHead>
+            <TableHead className="font-medium">Payment Received</TableHead>
             <TableHead className="font-medium">Winner</TableHead>
             <TableHead className="font-medium">Payments</TableHead>
             <TableHead className="text-right font-medium">Actions</TableHead>
@@ -192,13 +284,21 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableSkletonRows rowsCount={5} colsCount={6} />
+            <TableSkletonRows rowsCount={5} colsCount={8} />
           ) : (
-            values?.map((auctionObj: any) => {
-              const memberDetails: any = members?.find(
-                (m: any) => m?.id === auctionObj?.auction_user,
+            values?.map((auctionObj: ChitMonth) => {
+              const memberDetails = members?.find(
+                (m) => m?.id === auctionObj?.auction_user,
               );
-              const hasAuction = !!auctionObj?.auction_amount;
+              const payableAmount = getAuctionUserPayableAmount({
+                chit: chitDetails,
+                month: auctionObj,
+              });
+              const monthlyPaymentAmount = getMonthlyPaymentAmount({
+                chit: chitDetails,
+                month: auctionObj,
+                isOwnerAuction: auctionObj?.is_owner_auction,
+              });
 
               return (
                 <TableRow
@@ -216,11 +316,16 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     </span>
                   </TableCell>
                   <TableCell className="font-medium tabular-nums">
-                    {hasAuction ? (
-                      fmt.format(Number(auctionObj.auction_amount))
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
+                    {fmt.format(auctionObj.auction_amount)}
+                  </TableCell>
+                  <TableCell className="font-medium tabular-nums">
+                    {fmt.format(monthlyPaymentAmount)}
+                  </TableCell>
+                  <TableCell className="font-medium tabular-nums">
+                    {payableAmount ? fmt.format(payableAmount) : "-"}
+                  </TableCell>
+                  <TableCell className="font-medium tabular-nums text-green-700 dark:text-green-400">
+                    {fmt.format(auctionObj?.payments_received)}
                   </TableCell>
                   <TableCell>
                     {memberDetails?.name ? (
@@ -235,21 +340,48 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                   <TableCell>
                     <PaymentsBadge
                       count={auctionObj?.payments_count ?? 0}
-                      total={members?.length ?? 20}
+                      total={chitDetails?.members ?? 20}
                     />
                   </TableCell>
                   <TableCell
                     className="text-right"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => handleSelectMonthlyPayments(auctionObj)}
-                    >
-                      <EyeIcon className="size-3.5" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                          >
+                            <MoreHorizontalIcon className="size-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleSelectMonthlyPayments(auctionObj)
+                            }
+                          >
+                            View payments
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleEditMonth(auctionObj)}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:bg-red-100 focus:text-red-600 dark:focus:bg-red-900"
+                            onClick={() => handleDeleteMonth(auctionObj)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -274,6 +406,19 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         isOpen={isDrawerOpen}
         onOpenChange={setIsDrawerOpen}
         month={selectedMonth}
+        chit_id={chitId}
+      />
+      <EditMonthDialog
+        selectedMonth={selectedMonthToEdit}
+        editMode={!!selectedMonthToEdit}
+        onReset={handleResetEdit}
+        refetch={fetchChitMonths}
+      />
+      <DeleteMonthDialog
+        selectedMonthDetails={selectedMonthToDelete}
+        deleted={!!selectedMonthToDelete}
+        onReset={handleResetDelete}
+        refetch={fetchChitMonths}
       />
     </div>
   );

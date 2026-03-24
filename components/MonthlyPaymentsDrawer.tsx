@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
@@ -17,6 +16,7 @@ import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
 import { XIcon } from "lucide-react";
 import type { Payment, ChitMonth, Chit } from "@/types";
 import { ChitContext } from "@/context/ChitContext";
+import { getMonthlyPaidAmount, getMonthlyPaymentAmount } from "@/lib/utils";
 
 export const MonthlyPaymentsDrawer = ({
   month_name,
@@ -24,18 +24,29 @@ export const MonthlyPaymentsDrawer = ({
   isOpen,
   onOpenChange,
   month,
+  chit_id,
 }: {
   month_name: string;
   month_id: string;
   isOpen: boolean;
   onOpenChange: (value: boolean) => void;
   month?: ChitMonth | null;
+  chit_id: string;
 }) => {
-  const { loading, values, refetch } = useFetchChitPayments(month_id);
+  const { loading, values, refetch } = useFetchChitPayments(month_id, chit_id);
   const { chitDetails } = React.useContext(ChitContext);
 
   const paidCount =
-    values?.filter((p: Payment) => p.payment_status).length ?? 0;
+    values?.filter((p: Payment) => {
+      if (!p?.payments?.length) return false;
+      const monthPaymentAmount = getMonthlyPaymentAmount({
+        chit: chitDetails,
+        month: month,
+        isOwnerAuction: month?.is_owner_auction,
+      });
+      const paidAmount = getMonthlyPaidAmount(p);
+      return paidAmount >= monthPaymentAmount;
+    }).length ?? 0;
   const totalCount = values?.length ?? 0;
 
   return (

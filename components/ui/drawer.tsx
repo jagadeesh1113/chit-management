@@ -59,7 +59,7 @@ const DrawerContent = React.forwardRef<
         ],
         // ── Right ───────────────────────────────────────────────────────────
         direction === "right" && [
-          "inset-y-0 right-0 h-full w-full sm:w-[780px] rounded-l-xl",
+          "inset-y-0 right-0 h-full w-full sm:w-[960px] rounded-l-xl",
         ],
         // ── Left ────────────────────────────────────────────────────────────
         direction === "left" && [

@@ -24,10 +24,16 @@ import {
   PlusIcon,
   CalendarIcon,
   TagIcon,
-  IndianRupeeIcon,
   UserIcon,
   InfoIcon,
+  BanknoteIcon,
 } from "lucide-react";
+import {
+  getMonthlyPaymentAmount,
+  getNumericAmountWithoutCurrency,
+} from "@/lib/utils";
+import { ChitMonth, Member } from "@/types";
+import { ChitMonthContext } from "@/context/MonthContext";
 
 export const AddMonths = ({
   chitId,
@@ -38,6 +44,7 @@ export const AddMonths = ({
 }) => {
   const { values: members } = React.useContext(MemberContext);
   const { chitDetails } = React.useContext(ChitContext);
+  const { values: chitMonths } = React.useContext(ChitMonthContext);
 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -66,7 +73,7 @@ export const AddMonths = ({
 
   const chitAmount = Number(chitDetails?.amount ?? 0);
   const chitCharges = Number(chitDetails?.charges ?? 0);
-  const chitMonths = Number(chitDetails?.months ?? 1);
+  const numOfMonths = Number(chitDetails?.months ?? 1);
   const parsedAuction = Number(
     (auctionAmount ?? "").replace(/[₹,\s]/g, "") || 0,
   );
@@ -75,32 +82,54 @@ export const AddMonths = ({
   const isOwner = auctionMember?.owner ?? false;
 
   const amountPerMember = isOwner
-    ? chitAmount / chitMonths
-    : (chitAmount - parsedAuction + chitCharges) / chitMonths;
+    ? chitAmount / numOfMonths
+    : (chitAmount - parsedAuction + chitCharges) / numOfMonths;
 
-  const showPreview = parsedAuction > 0 && auctionUser;
+  const showPreview = parsedAuction >= 0 && auctionUser;
 
   // ── Add payments ─────────────────────────────────────────────────────────
-  const addPaymentsForMembers = async ({
-    auctionAmt,
-    month_id,
-    auction_member_obj,
+  const addPaymentsForOwnerAndAuctionUser = async ({
+    month,
+    owner,
   }: {
-    auctionAmt: number;
-    month_id: string;
-    auction_member_obj: any;
+    month: ChitMonth;
+    owner?: Member;
   }) => {
-    const amtPerMember = auction_member_obj?.owner
-      ? chitAmount / chitMonths
-      : (chitAmount - auctionAmt + chitCharges) / chitMonths;
+    const monthlyPaymentAmount = getMonthlyPaymentAmount({
+      month,
+      chit: chitDetails,
+      isOwnerAuction: owner?.id === month?.auction_user,
+    });
+    const selfPayments = [
+      // auction user
+      ...(month?.auction_user !== owner?.id
+        ? [
+            {
+              member_id: month?.auction_user,
+              amount: monthlyPaymentAmount,
+              chit_id: chitDetails?.id,
+              month_id: month?.id,
+              payment_date: month?.auction_date,
+              payment_type: "cash",
+            },
+          ]
+        : []),
+      // chit owner
+      {
+        member_id: owner?.id,
+        amount: monthlyPaymentAmount,
+        chit_id: chitDetails?.id,
+        month_id: month?.id,
+        payment_date: month?.auction_date,
+        payment_type: "cash",
+      },
+    ];
+
     try {
-      const res = await fetch("/api/payments", {
+      const res = await fetch("/api/payments/bulk", {
         method: "POST",
         body: JSON.stringify({
-          members,
-          amountPerMember: amtPerMember,
-          chit_id: chitId,
-          month_id,
+          payments: selfPayments,
         }),
       });
       await res.json();
@@ -117,10 +146,9 @@ export const AddMonths = ({
     formData.append("auction_user", auctionUser);
 
     // Strip currency formatting before sending
-    const rawAmount = (formData.get("auction_amount") as string)?.replace(
-      /[₹,\s]/g,
-      "",
-    );
+    const rawAmount = getNumericAmountWithoutCurrency(
+      formData.get("auction_amount") as string,
+    )?.toString();
     formData.set("auction_amount", rawAmount);
 
     setLoading(true);
@@ -134,12 +162,9 @@ export const AddMonths = ({
 
       if (data.success) {
         const auctionDetails = data?.values?.[0];
-        await addPaymentsForMembers({
-          auctionAmt: auctionDetails?.auction_amount,
-          month_id: auctionDetails?.id,
-          auction_member_obj: members.find(
-            (m: any) => m.id === auctionUser,
-          ),
+        await addPaymentsForOwnerAndAuctionUser({
+          month: auctionDetails,
+          owner: members?.find((memberObj) => memberObj?.owner === true),
         });
         toast.success("Month added successfully", { position: "top-right" });
         setIsDialogOpen(false);
@@ -166,10 +191,7 @@ export const AddMonths = ({
       </DialogTrigger>
 
       <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-xl p-0 gap-0">
-        <form
-          onSubmit={handleAddMonth}
-          className="flex flex-col max-h-[90dvh]"
-        >
+        <form onSubmit={handleAddMonth} className="flex flex-col max-h-[90dvh]">
           {/* Fixed header */}
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
             <DialogTitle className="text-base">Add Month / Auction</DialogTitle>
@@ -180,7 +202,6 @@ export const AddMonths = ({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-
             {/* Month name */}
             <div className="space-y-1.5">
               <Label
@@ -231,7 +252,7 @@ export const AddMonths = ({
                 Auction amount
               </Label>
               <div className="relative">
-                <IndianRupeeIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                <BanknoteIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <CurrencyInput
                   id="auction_amount"
                   name="auction_amount"
@@ -256,6 +277,9 @@ export const AddMonths = ({
                   onChange={(value) => setAuctionUser(value)}
                   value={auctionUser}
                   className="pl-8"
+                  excludeMemberIds={
+                    chitMonths?.map((monthObj) => monthObj.auction_user) ?? []
+                  }
                 />
               </div>
             </div>
@@ -330,11 +354,7 @@ function PreviewRow({
     <div className="flex items-center justify-between gap-2">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
-        className={
-          highlight
-            ? "text-sm font-semibold"
-            : "text-xs font-medium"
-        }
+        className={highlight ? "text-sm font-semibold" : "text-xs font-medium"}
       >
         {value}
       </span>
