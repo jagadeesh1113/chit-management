@@ -12,11 +12,13 @@ import {
   UsersIcon,
   CalendarDaysIcon,
   IndianRupeeIcon,
+  ChartColumnIncreasingIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 import React from "react";
 import { ChitMonthProvider } from "@/context/MonthContext";
+import { ChitReports } from "./ChitReports";
 
 const formatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -95,14 +97,20 @@ export const ChitDetails = ({ id }: { id: string }) => {
                 <CalendarDaysIcon className="size-3.5" />
                 Months
               </TabsTrigger>
+              <TabsTrigger value="reports">
+                <ChartColumnIncreasingIcon className="size-3.5" />
+                Reports
+              </TabsTrigger>
             </TabsList>
-
             <TabsContent value="members">
               <ChitMembers chitId={id} />
             </TabsContent>
 
             <TabsContent value="months">
               <ChitMonths chitId={id} />
+            </TabsContent>
+            <TabsContent value="reports">
+              <ChitReports />
             </TabsContent>
           </Tabs>
         </ChitMonthProvider>
