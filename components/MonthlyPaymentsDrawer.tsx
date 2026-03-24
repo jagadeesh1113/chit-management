@@ -16,6 +16,7 @@ import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
 import { XIcon } from "lucide-react";
 import type { Payment, ChitMonth, Chit } from "@/types";
 import { ChitContext } from "@/context/ChitContext";
+import { getMonthlyPaidAmount, getMonthlyPaymentAmount } from "@/lib/utils";
 
 export const MonthlyPaymentsDrawer = ({
   month_name,
@@ -36,7 +37,16 @@ export const MonthlyPaymentsDrawer = ({
   const { chitDetails } = React.useContext(ChitContext);
 
   const paidCount =
-    values?.filter((p: Payment) => !!p.payments?.length).length ?? 0;
+    values?.filter((p: Payment) => {
+      if (!p?.payments?.length) return false;
+      const monthPaymentAmount = getMonthlyPaymentAmount({
+        chit: chitDetails,
+        month: month,
+        isOwnerAuction: month?.is_owner_auction,
+      });
+      const paidAmount = getMonthlyPaidAmount(p);
+      return paidAmount >= monthPaymentAmount;
+    }).length ?? 0;
   const totalCount = values?.length ?? 0;
 
   return (

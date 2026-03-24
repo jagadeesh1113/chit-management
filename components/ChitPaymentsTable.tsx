@@ -11,70 +11,20 @@ import {
   TableRow,
 } from "./ui/table";
 import { TableSkletonRows } from "./table-skleton-rows";
-import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import React from "react";
 import { toast } from "sonner";
-import { CheckIcon, XIcon, ReceiptIcon, CalendarIcon, ChevronDownIcon } from "lucide-react";
-import { cn, getMonthlyPaymentAmount } from "@/lib/utils";
+import { CheckIcon, XIcon, ReceiptIcon, ChevronDownIcon } from "lucide-react";
+import {
+  cn,
+  formatAmount,
+  getMonthlyPaidAmount,
+  getMonthlyPaymentAmount,
+} from "@/lib/utils";
 import type { Payment, ChitMonth, Chit } from "@/types";
 import { MarkPaidForm } from "./mark-paid-form";
-
-// ── Formatters ───────────────────────────────────────────────────────────────
-const fmt = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-
-const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-// ── PAYMENT_TYPES lookup (local copy to avoid circular deps) ─────────────────
-const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  cash: "💵 Cash",
-  cheque: "📝 Cheque",
-  bank_transfer: "🏦 Bank Transfer",
-};
-
-// ── Payment history sub-component ────────────────────────────────────────────
-const PaymentHistory = ({ payments }: { payments: Payment["payments"] }) => {
-  if (!payments?.length) return null;
-  return (
-    <div className="border-t border-border mt-2 pt-2 space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-        <ReceiptIcon className="size-3" />
-        Payment history
-      </p>
-      {payments.map((p) => (
-        <div
-          key={p.payment_id}
-          className="flex items-center justify-between gap-2 text-xs"
-        >
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <CalendarIcon className="size-3 shrink-0" />
-            {formatDate(p.payment_date)}
-            {p.payment_type && (
-              <span className="text-muted-foreground/70">
-                · {PAYMENT_TYPE_LABELS[p.payment_type] ?? p.payment_type}
-              </span>
-            )}
-          </div>
-          <span className="font-medium tabular-nums shrink-0">
-            {fmt.format(p.amount)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-};
+import { PaymentHistory } from "./payment-history";
+import { OwnerBadge, PaymentStatusBadge } from "./custom-badges";
 
 // ── WhatsApp SVG icon ────────────────────────────────────────────────
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -89,10 +39,6 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 // ── WhatsApp reminder helper ────────────────────────────────────────────────
-const fmtINR = (n: number) =>
-  new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: 0,
-  }).format(n);
 
 const fmtDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -124,16 +70,16 @@ const openWhatsApp = (
       `Hi ${name},`,
       ``,
       `${auctionDate}`,
-      `Chits ${fmtINR(chit.amount)}, ${month.name}`,
-      `Auction Amount: ${fmtINR(auctionAmount)}`,
-      `Dividend Per Member: ${fmtINR(dividendPerMember)}`,
-      `Payable Amount Per Person: ${fmtINR(payablePerPerson)}`,
+      `Chits ${formatAmount(chit.amount)}, ${month.name}`,
+      `Auction Amount: ${formatAmount(auctionAmount)}`,
+      `Dividend Per Member: ${formatAmount(dividendPerMember)}`,
+      `Payable Amount Per Person: ${formatAmount(payablePerPerson)}`,
       ``,
       `Thank you!`,
     ].join("\n");
   } else {
     // Fallback if month/chit context isn't available
-    message = `Hi ${name}, your chit payment of ₹${fmtINR(payableAmount)} is due. Please make the payment at the earliest. Thank you!`;
+    message = `Hi ${name}, your chit payment of ₹${formatAmount(payableAmount)} is due. Please make the payment at the earliest. Thank you!`;
   }
 
   const number = mobile.replace(/\D/g, "");
@@ -142,37 +88,6 @@ const openWhatsApp = (
     "_blank",
   );
 };
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-const PaymentStatus = ({
-  status,
-  partial,
-}: {
-  status: boolean;
-  partial?: boolean;
-}) => {
-  if (status) {
-    return (
-      <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 text-xs">
-        Paid
-      </Badge>
-    );
-  }
-  if (partial) {
-    return (
-      <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 text-xs">
-        Partially paid
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 text-xs">
-      Unpaid
-    </Badge>
-  );
-};
-
-// ── Inline mark-as-paid form ──────────────────────────────────────────────────
 
 // ── Main component ────────────────────────────────────────────────────────────
 export const ChitPaymentsTable = ({
@@ -190,13 +105,19 @@ export const ChitPaymentsTable = ({
 }) => {
   const [error, setError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
-  const [expandedHistoryId, setExpandedHistoryId] = React.useState<string | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = React.useState<
+    string | null
+  >(null);
 
   const toggleHistory = (id: string) =>
     setExpandedHistoryId((prev) => (prev === id ? null : id));
 
   const monthlyPaymentAmount = React.useMemo(() => {
-    return getMonthlyPaymentAmount({ month, chit });
+    return getMonthlyPaymentAmount({
+      month,
+      chit,
+      isOwnerAuction: month?.is_owner_auction,
+    });
   }, [month, chit]);
 
   const toggleExpand = (id: string) =>
@@ -205,14 +126,13 @@ export const ChitPaymentsTable = ({
   const handleMarkUnpaid = async (paymentObj: Payment) => {
     setError(null);
     try {
-      const res = await fetch("/api/payments", {
-        method: "PUT",
+      const res = await fetch("/api/payments/bulk", {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          payment_id: paymentObj.member_id,
-          payment_status: false,
-          payment_date: null,
-          payment_type: null,
+          member_id: paymentObj?.member_id,
+          chit_id: chit?.id,
+          month_id: month?.id,
         }),
       });
       const data = await res.json();
@@ -261,10 +181,7 @@ export const ChitPaymentsTable = ({
             .toUpperCase()
             .slice(0, 2);
 
-          const paidAmount = paymentObj?.payments?.reduce(
-            (acc, paymentDetails) => (acc += paymentDetails?.amount),
-            0,
-          );
+          const paidAmount = getMonthlyPaidAmount(paymentObj);
           const pendingAmount = Math.max(0, monthlyPaymentAmount - paidAmount);
           const isPaid = pendingAmount === 0;
           const isPartial = !isPaid && paidAmount > 0;
@@ -295,34 +212,16 @@ export const ChitPaymentsTable = ({
                 </div>
 
                 {/* Name + meta */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate leading-tight">
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="text-sm font-medium truncate leading-tight">
                     {paymentObj.name}
-                  </p>
-                  {/* {isPaid && paymentObj.payment_type && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {
-                        PAYMENT_TYPES.find(
-                          (t) => t.value === paymentObj.payment_type,
-                        )?.icon
-                      }{" "}
-                      {
-                        PAYMENT_TYPES.find(
-                          (t) => t.value === paymentObj.payment_type,
-                        )?.label
-                      }
-                      {paymentObj.payment_date && (
-                        <span className="ml-1">
-                          · {formatDate(paymentObj.payment_date)}
-                        </span>
-                      )}
-                    </p>
-                  )} */}
+                  </span>
+                  {paymentObj?.owner ? <OwnerBadge /> : null}
                 </div>
 
                 {/* Status badge */}
                 <div className="shrink-0">
-                  <PaymentStatus status={isPaid} partial={isPartial} />
+                  <PaymentStatusBadge status={isPaid} partial={isPartial} />
                 </div>
               </div>
 
@@ -330,18 +229,22 @@ export const ChitPaymentsTable = ({
               <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
                 <div className="px-3 py-2">
                   <p className="text-xs text-muted-foreground">Due</p>
-                  <p className="text-xs font-semibold tabular-nums mt-0.5">{fmt.format(monthlyPaymentAmount)}</p>
+                  <p className="text-xs font-semibold tabular-nums mt-0.5">
+                    {formatAmount(monthlyPaymentAmount)}
+                  </p>
                 </div>
                 <div className="px-3 py-2">
                   <p className="text-xs text-muted-foreground">Paid</p>
                   <p className="text-xs font-semibold tabular-nums mt-0.5 text-green-700 dark:text-green-400">
-                    {paidAmount > 0 ? fmt.format(paidAmount) : "—"}
+                    {paidAmount > 0 ? formatAmount(paidAmount) : "—"}
                   </p>
                 </div>
                 <div className="px-3 py-2">
                   <p className="text-xs text-muted-foreground">Pending</p>
-                  <p className={`text-xs font-semibold tabular-nums mt-0.5 ${isPaid ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"}`}>
-                    {isPaid ? "—" : fmt.format(pendingAmount)}
+                  <p
+                    className={`text-xs font-semibold tabular-nums mt-0.5 ${isPaid ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"}`}
+                  >
+                    {isPaid ? "—" : formatAmount(pendingAmount)}
                   </p>
                 </div>
               </div>
@@ -356,18 +259,23 @@ export const ChitPaymentsTable = ({
                   >
                     <span className="flex items-center gap-1.5">
                       <ReceiptIcon className="size-3" />
-                      {paymentObj.payments.length} payment{paymentObj.payments.length > 1 ? "s" : ""}
+                      {paymentObj.payments.length} payment
+                      {paymentObj.payments.length > 1 ? "s" : ""}
                     </span>
                     <ChevronDownIcon
                       className={cn(
                         "size-3.5 transition-transform duration-200",
-                        expandedHistoryId === paymentObj.member_id && "rotate-180",
+                        expandedHistoryId === paymentObj.member_id &&
+                          "rotate-180",
                       )}
                     />
                   </button>
                   {expandedHistoryId === paymentObj.member_id && (
                     <div className="px-4 pb-3">
-                      <PaymentHistory payments={paymentObj.payments} />
+                      <PaymentHistory
+                        payments={paymentObj.payments}
+                        refetch={refetch}
+                      />
                     </div>
                   )}
                 </div>
@@ -455,58 +363,43 @@ export const ChitPaymentsTable = ({
             <TableSkletonRows rowsCount={5} colsCount={8} />
           ) : (
             values?.map((paymentObj) => {
-              const paidAmount = paymentObj?.payments?.reduce(
-                (acc, paymentDetails) => (acc += paymentDetails?.amount),
+              const paidAmount = getMonthlyPaidAmount(paymentObj);
+              const pendingAmount = Math.max(
                 0,
+                monthlyPaymentAmount - paidAmount,
               );
-              const pendingAmount = Math.max(0, monthlyPaymentAmount - paidAmount);
               const isPaid = pendingAmount === 0;
               const isPartial = !isPaid && paidAmount > 0;
               return (
                 <React.Fragment key={paymentObj.member_id}>
                   <TableRow>
                     <TableCell className="font-medium">
-                      {paymentObj.name}
+                      <div className="flex items-center gap-2">
+                        <span>{paymentObj.name}</span>
+                        {paymentObj?.owner ? <OwnerBadge /> : null}
+                      </div>
                     </TableCell>
                     <TableCell className="font-medium tabular-nums">
-                      {fmt.format(monthlyPaymentAmount)}
+                      {formatAmount(monthlyPaymentAmount)}
                     </TableCell>
                     <TableCell className="tabular-nums text-green-700 dark:text-green-400 font-medium">
-                      {paidAmount > 0 ? fmt.format(paidAmount) : "—"}
+                      {paidAmount > 0 ? formatAmount(paidAmount) : "—"}
                     </TableCell>
                     <TableCell>
                       {isPaid ? (
                         <span className="text-sm text-muted-foreground">—</span>
                       ) : (
                         <span className="text-sm font-medium tabular-nums text-amber-600 dark:text-amber-400">
-                          {fmt.format(pendingAmount)}
+                          {formatAmount(pendingAmount)}
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <PaymentStatus status={isPaid} partial={isPartial} />
-                        {/* {isPaid ? (
-                          <>
-                            {paymentObj.payment_type ? (
-                              <div>
-                                {
-                                  PAYMENT_TYPES.find(
-                                    (t) => t.value === paymentObj.payment_type,
-                                  )?.icon
-                                }{" "}
-                                {
-                                  PAYMENT_TYPES.find(
-                                    (t) => t.value === paymentObj.payment_type,
-                                  )?.label
-                                }
-                              </div>
-                            ) : null}
-                            {paymentObj.payment_date ? (
-                              <div>{formatDate(paymentObj.payment_date)}</div>
-                            ) : null}
-                          </>
-                        ) : null} */}
+                        <PaymentStatusBadge
+                          status={isPaid}
+                          partial={isPartial}
+                        />
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -562,11 +455,13 @@ export const ChitPaymentsTable = ({
                         <TableCell colSpan={6} className="py-2 px-6">
                           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <ReceiptIcon className="size-3" />
-                            {paymentObj.payments.length} payment{paymentObj.payments.length > 1 ? "s" : ""}
+                            {paymentObj.payments.length} payment
+                            {paymentObj.payments.length > 1 ? "s" : ""}
                             <ChevronDownIcon
                               className={cn(
                                 "size-3 ml-auto transition-transform duration-200",
-                                expandedHistoryId === paymentObj.member_id && "rotate-180",
+                                expandedHistoryId === paymentObj.member_id &&
+                                  "rotate-180",
                               )}
                             />
                           </span>
@@ -575,7 +470,10 @@ export const ChitPaymentsTable = ({
                       {expandedHistoryId === paymentObj.member_id && (
                         <TableRow className="bg-muted/10 hover:bg-muted/10">
                           <TableCell colSpan={6} className="py-2 px-8 pt-0">
-                            <PaymentHistory payments={paymentObj.payments} />
+                            <PaymentHistory
+                              payments={paymentObj.payments}
+                              refetch={refetch}
+                            />
                           </TableCell>
                         </TableRow>
                       )}

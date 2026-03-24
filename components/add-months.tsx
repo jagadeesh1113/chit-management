@@ -28,7 +28,11 @@ import {
   InfoIcon,
   BanknoteIcon,
 } from "lucide-react";
-import { getNumericAmountWithoutCurrency } from "@/lib/utils";
+import {
+  getMonthlyPaymentAmount,
+  getNumericAmountWithoutCurrency,
+} from "@/lib/utils";
+import { ChitMonth, Member } from "@/types";
 
 export const AddMonths = ({
   chitId,
@@ -79,29 +83,51 @@ export const AddMonths = ({
     ? chitAmount / chitMonths
     : (chitAmount - parsedAuction + chitCharges) / chitMonths;
 
-  const showPreview = parsedAuction > 0 && auctionUser;
+  const showPreview = parsedAuction >= 0 && auctionUser;
 
   // ── Add payments ─────────────────────────────────────────────────────────
-  const addPaymentsForMembers = async ({
-    auctionAmt,
-    month_id,
-    auction_member_obj,
+  const addPaymentsForOwnerAndAuctionUser = async ({
+    month,
+    owner,
   }: {
-    auctionAmt: number;
-    month_id: string;
-    auction_member_obj: any;
+    month: ChitMonth;
+    owner?: Member;
   }) => {
-    const amtPerMember = auction_member_obj?.owner
-      ? chitAmount / chitMonths
-      : (chitAmount - auctionAmt + chitCharges) / chitMonths;
+    const monthlyPaymentAmount = getMonthlyPaymentAmount({
+      month,
+      chit: chitDetails,
+      isOwnerAuction: owner?.id === month?.auction_user,
+    });
+    const selfPayments = [
+      // auction user
+      ...(month?.auction_user !== owner?.id
+        ? [
+            {
+              member_id: month?.auction_user,
+              amount: monthlyPaymentAmount,
+              chit_id: chitDetails?.id,
+              month_id: month?.id,
+              payment_date: month?.auction_date,
+              payment_type: "cash",
+            },
+          ]
+        : []),
+      // chit owner
+      {
+        member_id: owner?.id,
+        amount: monthlyPaymentAmount,
+        chit_id: chitDetails?.id,
+        month_id: month?.id,
+        payment_date: month?.auction_date,
+        payment_type: "cash",
+      },
+    ];
+
     try {
-      const res = await fetch("/api/payments", {
+      const res = await fetch("/api/payments/bulk", {
         method: "POST",
         body: JSON.stringify({
-          members,
-          amountPerMember: amtPerMember,
-          chit_id: chitId,
-          month_id,
+          payments: selfPayments,
         }),
       });
       await res.json();
@@ -134,10 +160,9 @@ export const AddMonths = ({
 
       if (data.success) {
         const auctionDetails = data?.values?.[0];
-        await addPaymentsForMembers({
-          auctionAmt: auctionDetails?.auction_amount,
-          month_id: auctionDetails?.id,
-          auction_member_obj: members.find((m: any) => m.id === auctionUser),
+        await addPaymentsForOwnerAndAuctionUser({
+          month: auctionDetails,
+          owner: members?.find((memberObj) => memberObj?.owner === true),
         });
         toast.success("Month added successfully", { position: "top-right" });
         setIsDialogOpen(false);

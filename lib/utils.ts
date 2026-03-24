@@ -1,4 +1,4 @@
-import { Chit, ChitMonth } from "@/types";
+import { Chit, ChitMonth, Payment } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -6,22 +6,42 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const fmt = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 export const getMonthlyPaymentAmount = ({
   chit,
   month,
+  isOwnerAuction = false,
 }: {
   month: ChitMonth | null | undefined;
   chit: Chit | null | undefined;
+  isOwnerAuction?: boolean;
 }) => {
   if (month && chit) {
     const auctionAmount = Number(month.auction_amount);
     const chitAmount = Number(chit.amount);
     const numMembers = Number(chit.members);
+    if (isOwnerAuction) {
+      return chitAmount / numMembers;
+    }
     const payablePerPerson =
       (chitAmount - auctionAmount + chit.charges) / numMembers;
     return payablePerPerson;
   }
   return 0;
+};
+
+export const getMonthlyPaidAmount = (paymentObj: Payment) => {
+  const paidAmount = paymentObj?.payments?.reduce(
+    (acc, paymentDetails) => (acc += paymentDetails?.amount),
+    0,
+  );
+  return paidAmount;
 };
 
 export const getNumericAmountWithoutCurrency = (amount: string | undefined) => {
@@ -38,4 +58,8 @@ export const formatDate = (dateStr: string | null | undefined): string => {
     month: "short",
     year: "numeric",
   });
+};
+
+export const formatAmount = (amount: number) => {
+  return fmt.format(amount);
 };

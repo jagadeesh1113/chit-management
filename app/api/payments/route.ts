@@ -92,6 +92,39 @@ export async function PUT(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const supabase = await createClient();
+    const { payment_id } = await req.json();
+
+    if (!payment_id) {
+      return NextResponse.json(
+        { success: false, error: "Payment id is required" },
+        { status: 400 },
+      );
+    }
+
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("id", payment_id);
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete payment" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const reqUrl = new URL(req.url);
@@ -108,7 +141,7 @@ export async function GET(req: Request) {
     const supabase = await createClient();
 
     const { data: results, error } = await supabase.rpc(
-      "get_chit_payments_v18",
+      "get_chit_payments_v20",
       {
         selected_month_id: monthId,
         selected_chit_id: chitId,

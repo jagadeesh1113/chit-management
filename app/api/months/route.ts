@@ -50,6 +50,36 @@ export async function POST(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const supabase = await createClient();
+    const { id } = await req.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Month id is required" },
+        { status: 400 },
+      );
+    }
+
+    const { error } = await supabase.from("months").delete().eq("id", id);
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to delete month" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const reqUrl = new URL(req.url);
@@ -64,7 +94,7 @@ export async function GET(req: Request) {
 
     const supabase = await createClient();
 
-    const { data, error } = await supabase.rpc("get_chit_months_v8", {
+    const { data, error } = await supabase.rpc("get_chit_months_v11", {
       selected_chit_id: chitId,
     });
 

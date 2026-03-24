@@ -9,6 +9,8 @@ import {
   SelectValue,
 } from "./ui/select";
 import React from "react";
+import { Member } from "@/types";
+import { OwnerBadge } from "./custom-badges";
 
 export const ChitMemberSelect = ({
   onChange,
@@ -22,10 +24,15 @@ export const ChitMemberSelect = ({
   const { values } = React.useContext(MemberContext);
 
   const renderSelectOption = () => {
-    return values?.map((memberObj: any) => {
+    return values?.map((memberObj: Member) => {
       return (
         <SelectItem key={memberObj.id} value={memberObj.id}>
           {memberObj?.name}
+          {memberObj?.owner ? (
+            <span className="ml-2">
+              <OwnerBadge />
+            </span>
+          ) : null}
         </SelectItem>
       );
     });

@@ -19,13 +19,13 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { TableSkletonRows } from "./table-skleton-rows";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { MemberContext } from "@/context/MemberContext";
 import { MoreHorizontalIcon, PhoneIcon } from "lucide-react";
 import { EditMemberDialog } from "./edit-member-dialog";
 import { DeleteMemberDialog } from "./delete-member-dialog";
+import { OwnerBadge } from "./custom-badges";
 
 interface MemberObj {
   id: string;
@@ -114,11 +114,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                 <span className="font-medium text-sm truncate">
                   {memberObj?.name}
                 </span>
-                {memberObj.owner && (
-                  <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 shrink-0">
-                    Owner
-                  </Badge>
-                )}
+                {memberObj.owner && <OwnerBadge />}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <span className="text-xs text-muted-foreground">
@@ -160,11 +156,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     {memberObj?.name}
-                    {memberObj.owner && (
-                      <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
-                        Owner
-                      </Badge>
-                    )}
+                    {memberObj.owner && <OwnerBadge />}
                   </div>
                 </TableCell>
                 <TableCell>{memberObj?.mobile}</TableCell>

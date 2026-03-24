@@ -32,6 +32,7 @@ export interface ChitMonth {
   chit_id: string;
   created_by: string;
   payments_count: number;
+  is_owner_auction?: boolean;
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
@@ -41,13 +42,16 @@ export interface Payment {
   member_id: string;
   name: string;
   mobile: string;
-  payments: {
-    amount: number;
-    payment_date: string | null;
-    payment_type: PaymentType | null;
-    month_id: string;
-    payment_id: string;
-  }[];
+  owner?: boolean;
+  payments: PaymentEntry[];
+}
+
+export interface PaymentEntry {
+  amount: number;
+  payment_date: string | null;
+  payment_type: PaymentType | null;
+  month_id: string;
+  payment_id: string;
 }
 
 // ── Context shapes ────────────────────────────────────────────────────────────

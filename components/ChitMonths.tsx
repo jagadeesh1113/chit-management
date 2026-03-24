@@ -20,7 +20,16 @@ import {
   TrophyIcon,
   IndianRupeeIcon,
   UsersIcon,
+  MoreHorizontalIcon,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { DeleteMonthDialog } from "./delete-month-dialog";
 import { Skeleton } from "./ui/skeleton";
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -70,10 +79,21 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
   const { values: members } = React.useContext(MemberContext);
   const [selectedMonth, setSelectedMonth] = React.useState<null | any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
+  const [selectedMonthToDelete, setSelectedMonthToDelete] = React.useState<
+    null | any
+  >(null);
 
   const handleSelectMonthlyPayments = (monthObj: any) => {
     setSelectedMonth(monthObj);
     setIsDrawerOpen(true);
+  };
+
+  const handleDeleteMonth = (monthObj: any) => {
+    setSelectedMonthToDelete(monthObj);
+  };
+
+  const handleResetDelete = () => {
+    setSelectedMonthToDelete(null);
   };
 
   // ── Mobile cards ──────────────────────────────────────────────────────────
@@ -124,14 +144,38 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     {formatDate(auctionObj?.auction_date)}
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8 shrink-0"
-                  onClick={() => handleSelectMonthlyPayments(auctionObj)}
-                >
-                  <EyeIcon className="size-3.5" />
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => handleSelectMonthlyPayments(auctionObj)}
+                  >
+                    <EyeIcon className="size-3.5" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-8">
+                        <MoreHorizontalIcon className="size-4" />
+                        <span className="sr-only">More options</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleSelectMonthlyPayments(auctionObj)}
+                      >
+                        View payments
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-red-600 focus:bg-red-100 focus:text-red-600 dark:focus:bg-red-900"
+                        onClick={() => handleDeleteMonth(auctionObj)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               {/* Stats row */}
@@ -198,7 +242,7 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
               const memberDetails: any = members?.find(
                 (m: any) => m?.id === auctionObj?.auction_user,
               );
-              const hasAuction = !!auctionObj?.auction_amount;
+              const hasAuction = auctionObj?.auction_amount >= 0;
 
               return (
                 <TableRow
@@ -242,14 +286,36 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     className="text-right"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => handleSelectMonthlyPayments(auctionObj)}
-                    >
-                      <EyeIcon className="size-3.5" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                          >
+                            <MoreHorizontalIcon className="size-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() =>
+                              handleSelectMonthlyPayments(auctionObj)
+                            }
+                          >
+                            View payments
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:bg-red-100 focus:text-red-600 dark:focus:bg-red-900"
+                            onClick={() => handleDeleteMonth(auctionObj)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -275,6 +341,12 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
         onOpenChange={setIsDrawerOpen}
         month={selectedMonth}
         chit_id={chitId}
+      />
+      <DeleteMonthDialog
+        selectedMonthDetails={selectedMonthToDelete}
+        deleted={!!selectedMonthToDelete}
+        onReset={handleResetDelete}
+        refetch={fetchChitMonths}
       />
     </div>
   );
