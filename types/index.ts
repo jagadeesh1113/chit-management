@@ -37,6 +37,9 @@ export interface ChitMonth {
   payments_count: number;
   is_owner_auction?: boolean;
   payments_received: number;
+  cash_received?: number;
+  cheque_received?: number;
+  bank_transfer_received?: number;
 }
 
 // ── Payment ───────────────────────────────────────────────────────────────────
