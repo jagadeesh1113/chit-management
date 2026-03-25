@@ -79,3 +79,13 @@ export interface MonthContextValue {
 export interface ChitContextValue {
   chitDetails: Chit | null;
 }
+
+export interface ChitPayout {
+  id?: string;
+  payout_id?: string;
+  member_id?: string;
+  amount?: number;
+  payment_date?: string | null;
+  payment_type?: PaymentType | null;
+  payment_status?: boolean;
+}

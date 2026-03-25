@@ -88,7 +88,7 @@ export const AddMonths = ({
   const showPreview = parsedAuction >= 0 && auctionUser;
 
   // ── Add payments ─────────────────────────────────────────────────────────
-  const addPaymentsForOwnerAndAuctionUser = async ({
+  const addPaymentsForAuctionUser = async ({
     month,
     owner,
   }: {
@@ -101,22 +101,8 @@ export const AddMonths = ({
       isOwnerAuction: owner?.id === month?.auction_user,
     });
     const selfPayments = [
-      // auction user
-      ...(month?.auction_user !== owner?.id
-        ? [
-            {
-              member_id: month?.auction_user,
-              amount: monthlyPaymentAmount,
-              chit_id: chitDetails?.id,
-              month_id: month?.id,
-              payment_date: month?.auction_date,
-              payment_type: "cash",
-            },
-          ]
-        : []),
-      // chit owner
       {
-        member_id: owner?.id,
+        member_id: month?.auction_user,
         amount: monthlyPaymentAmount,
         chit_id: chitDetails?.id,
         month_id: month?.id,
@@ -162,7 +148,7 @@ export const AddMonths = ({
 
       if (data.success) {
         const auctionDetails = data?.values?.[0];
-        await addPaymentsForOwnerAndAuctionUser({
+        await addPaymentsForAuctionUser({
           month: auctionDetails,
           owner: members?.find((memberObj) => memberObj?.owner === true),
         });

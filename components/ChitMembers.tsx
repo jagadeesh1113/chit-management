@@ -29,14 +29,7 @@ import { OwnerBadge, CountBadge } from "./custom-badges";
 import { ChitContext } from "@/context/ChitContext";
 import { formatAmount, getMonthlyPaymentAmount } from "@/lib/utils";
 import { ChitMonthContext } from "@/context/MonthContext";
-
-interface MemberObj {
-  id: string;
-  name: string;
-  mobile: string;
-  owner: boolean;
-  payments_count?: number;
-}
+import { Member } from "@/types";
 
 export const ChitMembers = ({ chitId }: { chitId: string }) => {
   const { values, loading, refetch } = React.useContext(MemberContext);
@@ -78,7 +71,7 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
   };
 
   // ── Action menu (shared) ───────────────────────────────────────────────────
-  const ActionMenu = ({ member }: { member: MemberObj }) => (
+  const ActionMenu = ({ member }: { member: Member }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="size-8 shrink-0">

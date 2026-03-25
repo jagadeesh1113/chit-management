@@ -1,5 +1,14 @@
 "use client";
 
+import { ChitContext } from "@/context/ChitContext";
+import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
+import { getMonthlyPaidAmount, getMonthlyPaymentAmount } from "@/lib/utils";
+import type { Chit, ChitMonth, Payment } from "@/types";
+import { XIcon } from "lucide-react";
+import React from "react";
+import { ChitPaymentsTable } from "./ChitPaymentsTable";
+import { ChitPayouts } from "./payouts/ChitPayouts";
+import { Button } from "./ui/button";
 import {
   Drawer,
   DrawerClose,
@@ -9,14 +18,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "./ui/drawer";
-import React from "react";
-import { Button } from "./ui/button";
-import { ChitPaymentsTable } from "./ChitPaymentsTable";
-import { useFetchChitPayments } from "@/hooks/use-fetch-chit-payments";
-import { XIcon } from "lucide-react";
-import type { Payment, ChitMonth, Chit } from "@/types";
-import { ChitContext } from "@/context/ChitContext";
-import { getMonthlyPaidAmount, getMonthlyPaymentAmount } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export const MonthlyPaymentsDrawer = ({
   month_name,
@@ -89,13 +91,26 @@ export const MonthlyPaymentsDrawer = ({
 
         {/* Scrollable payments list */}
         <div className="flex-1 overflow-y-auto">
-          <ChitPaymentsTable
-            loading={loading}
-            values={values}
-            refetch={refetch}
-            month={month}
-            chit={chitDetails as Chit | null}
-          />
+          <Tabs defaultValue="payments" className="w-full">
+            <TabsList className="px-5">
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="payouts">Payouts</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="payments">
+              <ChitPaymentsTable
+                loading={loading}
+                values={values}
+                refetch={refetch}
+                month={month}
+                chit={chitDetails as Chit | null}
+              />
+            </TabsContent>
+
+            <TabsContent value="payouts">
+              <ChitPayouts monthId={month_id} chitId={chit_id} />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Footer */}
