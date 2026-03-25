@@ -5,7 +5,7 @@ import React from "react";
 import CurrencyInput from "react-currency-input-field";
 import { toast } from "sonner";
 import { PAYMENT_TYPES } from "@/constants";
-import type { PaymentType } from "@/types";
+import type { ChitPayment, PaymentType } from "@/types";
 import { getNumericAmountWithoutCurrency, cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -16,8 +16,6 @@ import {
   ChevronDownIcon,
   XIcon,
 } from "lucide-react";
-
-const getPayoutId = (payout: any) => payout?.payout_id ?? payout?.id;
 
 export const AuctionUserPayoutForm = ({
   mode,
@@ -30,7 +28,7 @@ export const AuctionUserPayoutForm = ({
   refetch,
 }: {
   mode: "create" | "edit";
-  payout?: any | null;
+  payout?: ChitPayment | null;
   amountPreset: number;
   auctionUserId: string;
   chitId: string;
@@ -87,22 +85,20 @@ export const AuctionUserPayoutForm = ({
           setError(data.error ?? "Failed to add payout");
         }
       } else {
-        const payout_id = getPayoutId(payout);
-        if (!payout_id) {
+        if (!payout?.id) {
           setError("Payout id not found");
           return;
         }
 
-        const res = await fetch("/api/payouts", {
+        const res = await fetch("/api/payments", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            payout_id,
-            // Keep existing payment status if present; otherwise assume paid.
-            payment_status: payout?.payment_status ?? true,
+            payment_id: payout?.id,
             payment_date: date,
             payment_type: type,
             amount: getNumericAmountWithoutCurrency(amount),
+            is_payout: true,
           }),
         });
         const data = await res.json();

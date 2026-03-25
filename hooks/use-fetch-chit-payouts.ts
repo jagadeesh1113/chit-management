@@ -1,15 +1,15 @@
-import { ChitPayout } from "@/types";
+import { ChitPayment } from "@/types";
 import React from "react";
 
 interface ChitPayoutsState {
-  values: ChitPayout[];
+  values: ChitPayment[];
   loading: boolean;
   error: string | null;
 }
 
 type ChitPayoutsAction =
   | { type: "SET_LOADING"; data: boolean }
-  | { type: "SET_VALUES"; data: ChitPayout[] }
+  | { type: "SET_VALUES"; data: ChitPayment[] }
   | { type: "SET_ERROR"; data: string | null };
 
 const chitPayoutsReducer = (
@@ -47,7 +47,7 @@ export const useFetchChitPayouts = (month_id: string, chit_id: string) => {
       if (data.error) {
         dispatch({ type: "SET_ERROR", data: data.error });
       } else {
-        const payouts = (data.payouts ?? []) as ChitPayout[];
+        const payouts = (data.payouts ?? []) as ChitPayment[];
         dispatch({ type: "SET_VALUES", data: payouts });
       }
     } catch (err) {
