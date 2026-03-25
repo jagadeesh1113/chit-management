@@ -134,41 +134,78 @@ const BreakdownPopover = ({ month }: { month: ChitMonth }) => {
   );
 };
 
-// ── Mobile payment breakdown ──────────────────────────────────────────────────
-const MobilePaymentBreakdown = ({ month }: { month: ChitMonth }) => {
+// ── Mobile breakdown popover ──────────────────────────────────────────────────
+const MobileBreakdownPopover = ({ month }: { month: ChitMonth }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
   const cash = month.cash_received ?? 0;
   const cheque = month.cheque_received ?? 0;
   const bank = month.bank_transfer_received ?? 0;
   const hasData = cash > 0 || cheque > 0 || bank > 0;
 
+  // Close on outside tap
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [open]);
+
   if (!hasData) return null;
 
   return (
-    <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
-      <div className="px-3 py-2.5">
-        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-          <BanknoteIcon className="size-3 shrink-0" />Cash
-        </p>
-        <p className="text-xs font-semibold mt-0.5 tabular-nums">
-          {cash > 0 ? fmt.format(cash) : "—"}
-        </p>
-      </div>
-      <div className="px-3 py-2.5">
-        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-          <CreditCardIcon className="size-3 shrink-0" />Cheque
-        </p>
-        <p className="text-xs font-semibold mt-0.5 tabular-nums">
-          {cheque > 0 ? fmt.format(cheque) : "—"}
-        </p>
-      </div>
-      <div className="px-3 py-2.5">
-        <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-          <BuildingIcon className="size-3 shrink-0" />Bank
-        </p>
-        <p className="text-xs font-semibold mt-0.5 tabular-nums">
-          {bank > 0 ? fmt.format(bank) : "—"}
-        </p>
-      </div>
+    <div ref={ref} className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="ml-1 p-0.5 text-muted-foreground hover:text-foreground active:text-foreground transition-colors"
+        aria-label="View payment breakdown"
+      >
+        <InfoIcon className="size-3.5" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-lg border border-border bg-popover shadow-lg text-popover-foreground">
+          {/* Arrow */}
+          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-3 rotate-45 border-r border-b border-border bg-popover" />
+
+          {/* Header */}
+          <div className="px-3 pt-3 pb-1.5 border-b border-border">
+            <p className="text-xs font-semibold">Received by type</p>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-border">
+            {[
+              { icon: BanknoteIcon,   label: "Cash",          amount: cash },
+              { icon: CreditCardIcon, label: "Cheque",        amount: cheque },
+              { icon: BuildingIcon,   label: "Bank Transfer", amount: bank },
+            ].map(({ icon: Icon, label, amount }) => (
+              <div key={label} className="flex items-center justify-between px-3 py-2">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Icon className="size-3 shrink-0" />
+                  {label}
+                </span>
+                <span className="text-xs font-semibold tabular-nums">
+                  {amount > 0 ? fmt.format(amount) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -299,14 +336,12 @@ export const ChitMonths = ({ chitId }: { chitId: string }) => {
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                       <IndianRupeeIcon className="size-3" />Received
                     </p>
-                    <p className="text-xs font-semibold mt-0.5 tabular-nums text-green-700 dark:text-green-400">
+                    <p className="text-xs font-semibold mt-0.5 tabular-nums text-green-700 dark:text-green-400 flex items-center">
                       {fmt.format(auctionObj?.payments_received)}
+                      <MobileBreakdownPopover month={auctionObj} />
                     </p>
                   </div>
                 </div>
-
-                {/* Mobile breakdown */}
-                <MobilePaymentBreakdown month={auctionObj} />
 
                 {/* Winner + paid count */}
                 <div className="flex items-start justify-between gap-3 px-3 py-2.5 border-t border-border">
