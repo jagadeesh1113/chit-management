@@ -1,3 +1,4 @@
+import { MemberMonthPayment } from "@/hooks/use-fetch-member-payments";
 import { Chit, ChitMonth, Payment } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -18,7 +19,7 @@ export const getMonthlyPaymentAmount = ({
   month,
   isOwnerAuction = false,
 }: {
-  month: ChitMonth | null | undefined;
+  month: ChitMonth | null | undefined | MemberMonthPayment;
   chit: Chit | null | undefined;
   isOwnerAuction?: boolean;
 }) => {
@@ -86,4 +87,48 @@ export const getAuctionUserPayableAmount = ({
       isOwnerAuction: month?.is_owner_auction,
     })
   );
+};
+
+export const getWhatsAppChitMesssageTemplate = ({
+  chit,
+  month,
+}: {
+  chit: Chit | undefined | null;
+  month: ChitMonth | undefined | null;
+}) => {
+  let message: string;
+
+  const payablePerPerson = getMonthlyPaymentAmount({
+    chit,
+    month,
+    isOwnerAuction: month?.is_owner_auction,
+  });
+
+  if (month && chit) {
+    const auctionAmount = Number(month.auction_amount);
+    const numMembers = Number(chit.members);
+
+    const dividendPerMember = month?.is_owner_auction
+      ? 0
+      : (auctionAmount - chit.charges) / numMembers;
+    const auctionDate = month.auction_date
+      ? formatDate(month.auction_date)
+      : "—";
+
+    message = [
+      `Hi ${name},`,
+      ``,
+      `${auctionDate}`,
+      `Chits ${formatAmount(chit.amount)}, ${month.name}`,
+      `Auction Amount: ${formatAmount(auctionAmount)}`,
+      `Dividend Per Member: ${formatAmount(dividendPerMember)}`,
+      `Payable Amount Per Person: ${formatAmount(payablePerPerson)}`,
+      ``,
+      `Thank you!`,
+    ].join("\n");
+  } else {
+    // Fallback if month/chit context isn't available
+    message = `Hi ${name}, your chit payment of ₹${formatAmount(payablePerPerson)} is due. Please make the payment at the earliest. Thank you!`;
+  }
+  return message;
 };

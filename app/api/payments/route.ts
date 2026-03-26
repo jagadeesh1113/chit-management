@@ -6,8 +6,15 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient();
 
-    const { amount, chit_id, month_id, payment_date, member_id, payment_type } =
-      await req.json();
+    const {
+      amount,
+      chit_id,
+      month_id,
+      payment_date,
+      member_id,
+      payment_type,
+      is_payout = false,
+    } = await req.json();
 
     const {
       data: { user },
@@ -22,6 +29,7 @@ export async function POST(req: Request) {
       created_by: user?.id,
       payment_date,
       payment_type,
+      is_payout,
     });
 
     if (error) {
@@ -141,7 +149,7 @@ export async function GET(req: Request) {
     const supabase = await createClient();
 
     const { data: results, error } = await supabase.rpc(
-      "get_chit_payments_v20",
+      "get_chit_payments_v21",
       {
         selected_month_id: monthId,
         selected_chit_id: chitId,
