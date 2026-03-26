@@ -1,3 +1,4 @@
+import { MemberMonthPayment } from "@/hooks/use-fetch-member-payments";
 import { Chit, ChitMonth, Payment } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -18,7 +19,7 @@ export const getMonthlyPaymentAmount = ({
   month,
   isOwnerAuction = false,
 }: {
-  month: ChitMonth | null | undefined;
+  month: ChitMonth | null | undefined | MemberMonthPayment;
   chit: Chit | null | undefined;
   isOwnerAuction?: boolean;
 }) => {
