@@ -2,11 +2,7 @@
 "use client";
 
 import { useFetchChitPayouts } from "@/hooks/use-fetch-chit-payouts";
-import {
-  formatAmount,
-  formatDate,
-  getAuctionUserPayableAmount,
-} from "@/lib/utils";
+import { formatAmount, formatDate, getAuctionUserPayableAmount } from "@/lib/utils";
 import {
   MoreHorizontalIcon,
   RefreshCcwIcon,
@@ -18,7 +14,6 @@ import {
 } from "lucide-react";
 import { TableSkletonRows } from "../table-skleton-rows";
 import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,18 +38,43 @@ import { toast } from "sonner";
 import { PAYMENT_TYPE_LABELS } from "@/constants";
 import type { ChitPayment } from "@/types";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const getPayoutId = (p: ChitPayment) => p?.id ?? "";
+
+// ── Props — the drawer owns fetching and passes data down ─────────────────────
+interface ChitPayoutsProps {
+  chitId: string;
+  monthId: string;
+  // When rendered inside MonthlyPaymentsDrawer, these are passed in so the
+  // drawer can show the summary above the tabs without double-fetching.
+  payouts?: ChitPayment[];
+  payoutsLoading?: boolean;
+  refetchPayouts?: () => void;
+  payableAmount?: number;
+  totalPayoutPaid?: number;
+  payoutRemaining?: number;
+}
+
 export const ChitPayouts = ({
   chitId,
   monthId,
-}: {
-  chitId: string;
-  monthId: string;
-}) => {
-  const {
-    values: payouts,
-    loading: payoutsLoading,
-    refetch: refetchPayouts,
-  } = useFetchChitPayouts(monthId, chitId);
+  payouts: payoutsProp,
+  payoutsLoading: payoutsLoadingProp,
+  refetchPayouts: refetchPayoutsProp,
+  payableAmount: payableAmountProp,
+  totalPayoutPaid: totalPayoutPaidProp,
+  payoutRemaining: payoutRemainingProp,
+}: ChitPayoutsProps) => {
+  // If props are provided (drawer mode), use them; otherwise fetch internally
+  // (standalone usage outside the drawer).
+  const internalFetch = useFetchChitPayouts(
+    payoutsProp === undefined ? monthId : "",
+    payoutsProp === undefined ? chitId : "",
+  );
+
+  const payouts = payoutsProp ?? internalFetch.values;
+  const payoutsLoading = payoutsLoadingProp ?? internalFetch.loading;
+  const refetchPayouts = refetchPayoutsProp ?? internalFetch.refetch;
 
   const { values: months } = React.useContext(ChitMonthContext);
   const { chitDetails } = React.useContext(ChitContext);
@@ -64,45 +84,41 @@ export const ChitPayouts = ({
     [months, monthId],
   );
 
-  const payableAmount = React.useMemo(() => {
-    if (!month || !chitDetails) return 0;
-    return getAuctionUserPayableAmount({ chit: chitDetails, month }) ?? 0;
-  }, [month, chitDetails]);
+  // Compute locally if not provided (standalone mode)
+  const payableAmount =
+    payableAmountProp ??
+    (month && chitDetails
+      ? (getAuctionUserPayableAmount({ chit: chitDetails, month }) ?? 0)
+      : 0);
 
-  const totalPaid = React.useMemo(
-    () => (payouts ?? []).reduce((acc, p) => acc + (Number(p?.amount) || 0), 0),
-    [payouts],
-  );
+  const totalPaid =
+    totalPayoutPaidProp ??
+    (payouts ?? []).reduce((acc, p) => acc + (Number(p?.amount) || 0), 0);
 
-  const remaining = Math.max(0, Number(payableAmount) - Number(totalPaid));
+  const remaining =
+    payoutRemainingProp ?? Math.max(0, Number(payableAmount) - totalPaid);
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [adding, setAdding] = React.useState(false);
-  const [editingId, setEditingId] = React.useState<string | null | undefined>(
-    null,
-  );
-  const [confirmDeleteId, setConfirmDeleteId] = React.useState<
-    string | null | undefined
-  >(null);
-  const [deletingId, setDeletingId] = React.useState<string | null | undefined>(
-    null,
-  );
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   const handleEdit = (payout: ChitPayment) => {
-    const id = payout?.id;
+    const id = getPayoutId(payout);
     setEditingId((prev) => (prev === id ? null : id));
     setConfirmDeleteId(null);
     setAdding(false);
   };
 
   const handleDeleteRequest = (payout: ChitPayment) => {
-    const id = payout?.id;
+    const id = getPayoutId(payout);
     setConfirmDeleteId((prev) => (prev === id ? null : id));
     setEditingId(null);
   };
 
   const handleDelete = async (payout: ChitPayment) => {
-    const id = payout?.id;
+    const id = getPayoutId(payout);
     setDeletingId(id);
     try {
       const res = await fetch("/api/payments", {
@@ -115,14 +131,10 @@ export const ChitPayouts = ({
         toast.success("Payout deleted", { position: "top-right" });
         refetchPayouts();
       } else {
-        toast.error(data.error ?? "Failed to delete payout", {
-          position: "top-right",
-        });
+        toast.error(data.error ?? "Failed to delete payout", { position: "top-right" });
       }
     } catch (err: any) {
-      toast.error(err?.message ?? "Something went wrong", {
-        position: "top-right",
-      });
+      toast.error(err?.message ?? "Something went wrong", { position: "top-right" });
     } finally {
       setDeletingId(null);
       setConfirmDeleteId(null);
@@ -135,10 +147,7 @@ export const ChitPayouts = ({
       return (
         <div className="space-y-2 sm:hidden">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-border bg-card p-4 space-y-3"
-            >
+            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <Skeleton className="h-4 w-1/3" />
                 <Skeleton className="h-7 w-7 rounded-lg" />
@@ -158,23 +167,18 @@ export const ChitPayouts = ({
     return (
       <div className="space-y-2 sm:hidden">
         {payouts.map((payoutObj) => {
-          const id = payoutObj?.id;
+          const id = getPayoutId(payoutObj);
           const isEditing = editingId === id;
           const isConfirmingDelete = confirmDeleteId === id;
           const isDeleting = deletingId === id;
 
           return (
-            <div
-              key={id}
-              className="rounded-xl border border-border bg-card overflow-hidden"
-            >
+            <div key={id} className="rounded-xl border border-border bg-card overflow-hidden">
               {/* Header row */}
               <div className="flex items-center justify-between gap-2 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold tabular-nums">
-                    {payoutObj.amount
-                      ? formatAmount(Number(payoutObj.amount))
-                      : "—"}
+                    {payoutObj.amount ? formatAmount(Number(payoutObj.amount)) : "—"}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -186,15 +190,12 @@ export const ChitPayouts = ({
                         <span>·</span>
                         <span className="flex items-center gap-1">
                           <BanknoteIcon className="size-3 shrink-0" />
-                          {PAYMENT_TYPE_LABELS[payoutObj.payment_type] ??
-                            payoutObj.payment_type}
+                          {PAYMENT_TYPE_LABELS[payoutObj.payment_type] ?? payoutObj.payment_type}
                         </span>
                       </>
                     )}
                   </div>
                 </div>
-
-                {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
                   {!isEditing && !isConfirmingDelete && (
                     <>
@@ -202,7 +203,6 @@ export const ChitPayouts = ({
                         type="button"
                         onClick={() => handleEdit(payoutObj)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        title="Edit payout"
                       >
                         <PencilIcon className="size-3.5" />
                       </button>
@@ -210,13 +210,11 @@ export const ChitPayouts = ({
                         type="button"
                         onClick={() => handleDeleteRequest(payoutObj)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
-                        title="Delete payout"
                       >
                         <Trash2Icon className="size-3.5" />
                       </button>
                     </>
                   )}
-
                   {isEditing && (
                     <button
                       type="button"
@@ -266,10 +264,7 @@ export const ChitPayouts = ({
                     chitId={chitId}
                     monthId={monthId}
                     onCancel={() => setEditingId(null)}
-                    refetch={() => {
-                      setEditingId(null);
-                      refetchPayouts();
-                    }}
+                    refetch={() => { setEditingId(null); refetchPayouts(); }}
                   />
                 </div>
               )}
@@ -297,7 +292,7 @@ export const ChitPayouts = ({
             <TableSkletonRows rowsCount={3} colsCount={4} />
           ) : (
             payouts?.map((payoutObj) => {
-              const id = payoutObj?.id;
+              const id = getPayoutId(payoutObj);
               const isEditing = editingId === id;
               const isConfirmingDelete = confirmDeleteId === id;
               const isDeleting = deletingId === id;
@@ -306,52 +301,38 @@ export const ChitPayouts = ({
                 <React.Fragment key={id}>
                   <TableRow>
                     <TableCell className="font-medium tabular-nums">
-                      {payoutObj.amount
-                        ? formatAmount(Number(payoutObj.amount))
-                        : "—"}
+                      {payoutObj.amount ? formatAmount(Number(payoutObj.amount)) : "—"}
                     </TableCell>
-                    <TableCell>
-                      {formatDate(payoutObj.payment_date ?? null)}
-                    </TableCell>
+                    <TableCell>{formatDate(payoutObj.payment_date ?? null)}</TableCell>
                     <TableCell>
                       {payoutObj.payment_type
-                        ? (PAYMENT_TYPE_LABELS[payoutObj.payment_type] ??
-                          payoutObj.payment_type)
+                        ? (PAYMENT_TYPE_LABELS[payoutObj.payment_type] ?? payoutObj.payment_type)
                         : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 shrink-0"
-                          >
+                          <Button variant="ghost" size="icon" className="size-8 shrink-0">
                             <MoreHorizontalIcon className="size-4" />
                             <span className="sr-only">Open menu</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleEdit(payoutObj)}
-                          >
-                            <PencilIcon className="size-3.5 mr-2" />
-                            Edit
+                          <DropdownMenuItem onClick={() => handleEdit(payoutObj)}>
+                            <PencilIcon className="size-3.5 mr-2" />Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950"
                             onClick={() => handleDeleteRequest(payoutObj)}
                           >
-                            <Trash2Icon className="size-3.5 mr-2" />
-                            Delete
+                            <Trash2Icon className="size-3.5 mr-2" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
 
-                  {/* Delete confirmation row */}
                   {isConfirmingDelete && (
                     <TableRow className="bg-red-50 dark:bg-red-950/30 hover:bg-red-50 dark:hover:bg-red-950/30">
                       <TableCell colSpan={4} className="py-2.5 px-4">
@@ -360,20 +341,13 @@ export const ChitPayouts = ({
                             Are you sure you want to delete this payout?
                           </p>
                           <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => setConfirmDeleteId(null)}
-                            >
+                            <Button variant="outline" size="sm" className="h-7 text-xs"
+                              onClick={() => setConfirmDeleteId(null)}>
                               Cancel
                             </Button>
-                            <Button
-                              size="sm"
+                            <Button size="sm"
                               className="h-7 text-xs bg-red-600 hover:bg-red-700 text-white border-0"
-                              disabled={isDeleting}
-                              onClick={() => handleDelete(payoutObj)}
-                            >
+                              disabled={isDeleting} onClick={() => handleDelete(payoutObj)}>
                               {isDeleting ? "Deleting…" : "Delete"}
                             </Button>
                           </div>
@@ -382,7 +356,6 @@ export const ChitPayouts = ({
                     </TableRow>
                   )}
 
-                  {/* Inline edit row */}
                   {isEditing && (
                     <TableRow className="hover:bg-transparent">
                       <TableCell colSpan={4} className="py-3 px-4 bg-muted/20">
@@ -394,10 +367,7 @@ export const ChitPayouts = ({
                           chitId={chitId}
                           monthId={monthId}
                           onCancel={() => setEditingId(null)}
-                          refetch={() => {
-                            setEditingId(null);
-                            refetchPayouts();
-                          }}
+                          refetch={() => { setEditingId(null); refetchPayouts(); }}
                         />
                       </TableCell>
                     </TableRow>
@@ -413,14 +383,15 @@ export const ChitPayouts = ({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold sm:text-base">
+    <div className="p-4 space-y-3">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">
           Payouts{" "}
           <span className="text-muted-foreground font-normal">
             ({payouts?.length ?? 0})
           </span>
-        </h2>
+        </h3>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -429,18 +400,12 @@ export const ChitPayouts = ({
             disabled={payoutsLoading}
             className="h-8 px-2 sm:px-3"
           >
-            <RefreshCcwIcon
-              className={`size-3.5 ${payoutsLoading ? "animate-spin" : ""}`}
-            />
-            <span className="hidden sm:inline">Refresh</span>
+            <RefreshCcwIcon className={`size-3.5 ${payoutsLoading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline ml-1.5">Refresh</span>
           </Button>
           <Button
             size="sm"
-            onClick={() => {
-              setAdding((v) => !v);
-              setEditingId(null);
-              setConfirmDeleteId(null);
-            }}
+            onClick={() => { setAdding((v) => !v); setEditingId(null); setConfirmDeleteId(null); }}
             disabled={!month?.auction_user || payableAmount <= 0}
           >
             {adding ? "Close" : "Add payout"}
@@ -448,51 +413,18 @@ export const ChitPayouts = ({
         </div>
       </div>
 
-      {/* Summary card */}
-      <Card className="mb-3 shadow-none">
-        <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-sm">Payout summary</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-[11px] text-muted-foreground">Payable</p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums">
-                {formatAmount(Number(payableAmount))}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-[11px] text-muted-foreground">Paid</p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-green-700 dark:text-green-400">
-                {totalPaid > 0 ? formatAmount(totalPaid) : "—"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-[11px] text-muted-foreground">Pending</p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-                {remaining > 0 ? formatAmount(remaining) : "—"}
-              </p>
-            </div>
-          </div>
-
-          {adding && (
-            <div className="mt-3">
-              <AuctionUserPayoutForm
-                mode="create"
-                amountPreset={remaining > 0 ? remaining : Number(payableAmount)}
-                auctionUserId={month?.auction_user ?? ""}
-                chitId={chitId}
-                monthId={monthId}
-                onCancel={() => setAdding(false)}
-                refetch={() => {
-                  setAdding(false);
-                  refetchPayouts();
-                }}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Add form */}
+      {adding && (
+        <AuctionUserPayoutForm
+          mode="create"
+          amountPreset={remaining > 0 ? remaining : Number(payableAmount)}
+          auctionUserId={month?.auction_user ?? ""}
+          chitId={chitId}
+          monthId={monthId}
+          onCancel={() => setAdding(false)}
+          refetch={() => { setAdding(false); refetchPayouts(); }}
+        />
+      )}
 
       <MobileList />
       <DesktopTable />

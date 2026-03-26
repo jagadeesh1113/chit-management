@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     const supabase = await createClient();
 
-    const { data: results, error } = await supabase.rpc("get_chit_payouts_v3", {
+    const { data: results, error } = await supabase.rpc("get_chit_payouts_v4", {
       selected_month_id: monthId,
       selected_chit_id: chitId,
     });

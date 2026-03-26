@@ -20,6 +20,7 @@ import {
   formatAmount,
   getMonthlyPaidAmount,
   getMonthlyPaymentAmount,
+  getWhatsAppChitMesssageTemplate,
 } from "@/lib/utils";
 import type { Payment, ChitMonth, Chit } from "@/types";
 import { MarkPaidForm } from "./mark-paid-form";
@@ -39,54 +40,32 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 // ── WhatsApp reminder helper ────────────────────────────────────────────────
-
-const fmtDate = (dateStr: string) => {
-  const d = new Date(dateStr);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(2);
-  return `${dd}/${mm}/${yy}`;
-};
-
 const openWhatsApp = (
   mobile: string,
-  name: string,
-  payableAmount: number,
   month?: ChitMonth | null,
   chit?: Chit | null,
 ) => {
-  let message: string;
-
-  if (month && chit) {
-    const auctionAmount = Number(month.auction_amount);
-    const chitAmount = Number(chit.amount);
-    const numMembers = Number(chit.members);
-    const payablePerPerson =
-      (chitAmount - auctionAmount + chit.charges) / numMembers;
-    const dividendPerMember = (auctionAmount - chit.charges) / numMembers;
-    const auctionDate = month.auction_date ? fmtDate(month.auction_date) : "—";
-
-    message = [
-      `Hi ${name},`,
-      ``,
-      `${auctionDate}`,
-      `Chits ${formatAmount(chit.amount)}, ${month.name}`,
-      `Auction Amount: ${formatAmount(auctionAmount)}`,
-      `Dividend Per Member: ${formatAmount(dividendPerMember)}`,
-      `Payable Amount Per Person: ${formatAmount(payablePerPerson)}`,
-      ``,
-      `Thank you!`,
-    ].join("\n");
-  } else {
-    // Fallback if month/chit context isn't available
-    message = `Hi ${name}, your chit payment of ₹${formatAmount(payableAmount)} is due. Please make the payment at the earliest. Thank you!`;
-  }
+  const message = getWhatsAppChitMesssageTemplate({
+    chit,
+    month,
+  });
 
   const number = mobile.replace(/\D/g, "");
-  window.open(
-    `https://wa.me/91${number}?text=${encodeURIComponent(message)}`,
-    "_blank",
-  );
+  const url = `https://wa.me/91${number}?text=${encodeURIComponent(message)}`;
+  const tab = window.open("", "_blank");
+  if (tab) {
+    tab.document.write(`
+      <html>
+        <body>
+          <script>
+            window.location.href = "${url}";
+            setTimeout(() => window.close(), 1000);
+          <\/script>
+        </body>
+      </html>
+    `);
+    tab.document.close();
+  }
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -287,15 +266,7 @@ export const ChitPaymentsTable = ({
                   {/* WhatsApp reminder */}
                   <button
                     type="button"
-                    onClick={() =>
-                      openWhatsApp(
-                        paymentObj.mobile,
-                        paymentObj.name,
-                        monthlyPaymentAmount,
-                        month,
-                        chit,
-                      )
-                    }
+                    onClick={() => openWhatsApp(paymentObj.mobile, month, chit)}
                     className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] text-white py-2 text-xs font-medium hover:bg-[#1ebe5d] transition-colors"
                   >
                     <WhatsAppIcon className="size-3.5" />
@@ -418,13 +389,7 @@ export const ChitPaymentsTable = ({
                               size="sm"
                               className="bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0 gap-1.5"
                               onClick={() =>
-                                openWhatsApp(
-                                  paymentObj.mobile,
-                                  paymentObj.name,
-                                  monthlyPaymentAmount,
-                                  month,
-                                  chit,
-                                )
+                                openWhatsApp(paymentObj.mobile, month, chit)
                               }
                             >
                               <WhatsAppIcon className="size-3.5" />
