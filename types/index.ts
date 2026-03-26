@@ -8,6 +8,7 @@ export interface Member {
   created_by: string;
   payments_count?: number;
   payments_received?: number;
+  payments: PaymentEntry[];
 }
 
 // ── Chit ──────────────────────────────────────────────────────────────────────

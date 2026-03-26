@@ -138,7 +138,7 @@ export async function GET(req: Request) {
 
     const supabase = await createClient();
 
-    const { data, error } = await supabase.rpc("get_chit_members_v8", {
+    const { data, error } = await supabase.rpc("get_chit_members_v10", {
       selected_chit_id: chitId,
     });
 

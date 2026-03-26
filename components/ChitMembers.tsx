@@ -34,29 +34,57 @@ import { OwnerBadge, CountBadge } from "./custom-badges";
 import { ChitContext } from "@/context/ChitContext";
 import { formatAmount, getMonthlyPaymentAmount } from "@/lib/utils";
 import { ChitMonthContext } from "@/context/MonthContext";
-import { Member } from "@/types";
+import { Chit, ChitMonth, Member } from "@/types";
 import { MemberViewDrawer } from "./MemberViewDrawer";
-import { openWhatsapp, WhatsAppIcon } from "./whatsapp";
+import {
+  getWhatsAppChitMesssageTemplate,
+  openWhatsapp,
+  WhatsAppIcon,
+} from "./whatsapp";
 
 // ── WhatsApp helper ───────────────────────────────────────────────────────────
-const openMemberWhatsApp = (
-  mobile: string,
-  name: string,
-  pendingAmount: number,
-  chitName?: string,
-) => {
+const openMemberWhatsApp = ({
+  member,
+  months,
+  chit,
+}: {
+  member: Member;
+  months: ChitMonth[];
+  chit: Chit | null;
+}) => {
+  const unpaidMonths = months?.filter((monthObj) => {
+    const payableAmountPerPerson = getMonthlyPaymentAmount({
+      chit,
+      month: monthObj,
+      isOwnerAuction: monthObj?.is_owner_auction,
+    });
+    const paidAmount = member?.payments
+      ?.filter((paymentObj) => paymentObj?.month_id === monthObj.id)
+      ?.reduce((acc, paymentObj) => {
+        acc += paymentObj?.amount;
+        return acc;
+      }, 0);
+    return paidAmount < payableAmountPerPerson;
+  });
+
+  const monthlyMessageTemplate = unpaidMonths?.map((monthObj) => {
+    return getWhatsAppChitMesssageTemplate({
+      chit,
+      month: monthObj,
+      excludeGreetings: true,
+    });
+  });
+
   const message = [
     `Hi ${name},`,
     ``,
-    `This is a reminder that you have a pending chit payment of ${formatAmount(pendingAmount)}${chitName ? ` for ${chitName}` : ""}.`,
-    ``,
-    `Please make the payment at the earliest.`,
+    monthlyMessageTemplate.join("\n\n--*********--\n\n"),
     ``,
     `Thank you!`,
   ].join("\n");
 
   openWhatsapp({
-    mobile,
+    mobile: member?.mobile,
     message,
   });
 };
@@ -214,13 +242,11 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                   <button
                     type="button"
                     onClick={() =>
-                      openMemberWhatsApp(
-                        memberObj.mobile,
-                        memberObj.name,
-                        totalChitPaymentAmountPerUser -
-                          (memberObj.payments_received ?? 0),
-                        chitDetails?.name,
-                      )
+                      openMemberWhatsApp({
+                        member: memberObj,
+                        chit: chitDetails,
+                        months,
+                      })
                     }
                     className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] text-white py-2 text-xs font-medium hover:bg-[#1ebe5d] active:opacity-75 transition-colors"
                   >
@@ -287,13 +313,11 @@ export const ChitMembers = ({ chitId }: { chitId: string }) => {
                           size="sm"
                           className="h-8 gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0"
                           onClick={() =>
-                            openMemberWhatsApp(
-                              memberObj.mobile,
-                              memberObj.name,
-                              totalChitPaymentAmountPerUser -
-                                (memberObj?.payments_received ?? 0),
-                              chitDetails?.name,
-                            )
+                            openMemberWhatsApp({
+                              member: memberObj,
+                              months,
+                              chit: chitDetails,
+                            })
                           }
                         >
                           <WhatsAppIcon className="size-3.5" />

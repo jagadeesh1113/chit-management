@@ -4,9 +4,11 @@ import { Chit, ChitMonth } from "@/types";
 export const getWhatsAppChitMesssageTemplate = ({
   chit,
   month,
+  excludeGreetings = false,
 }: {
   chit: Chit | undefined | null;
   month: ChitMonth | undefined | null;
+  excludeGreetings?: boolean;
 }) => {
   let message: string;
 
@@ -28,15 +30,13 @@ export const getWhatsAppChitMesssageTemplate = ({
       : "—";
 
     message = [
-      `Hi ${name},`,
-      ``,
+      ...(!excludeGreetings ? [`Hi ${name},`, ``] : []),
       `${auctionDate}`,
       `Chits ${formatAmount(chit.amount)}, ${month.name}`,
       `Auction Amount: ${formatAmount(auctionAmount)}`,
       `Dividend Per Member: ${formatAmount(dividendPerMember)}`,
       `Payable Amount Per Person: ${formatAmount(payablePerPerson)}`,
-      ``,
-      `Thank you!`,
+      ...(!excludeGreetings ? [``, `Thank you!`] : []),
     ].join("\n");
   } else {
     // Fallback if month/chit context isn't available
