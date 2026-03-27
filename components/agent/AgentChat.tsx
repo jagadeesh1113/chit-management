@@ -1,7 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, UIMessage, isTextUIPart, isToolUIPart } from "ai";
+import {
+  DefaultChatTransport,
+  UIMessage,
+  isTextUIPart,
+  isToolUIPart,
+} from "ai";
 import React from "react";
 import {
   BotIcon,
@@ -14,15 +20,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import type { PageContext } from "./AgentProvider";
 
-// ── Suggestion chips shown when chat is empty ─────────────────────────────────
-const SUGGESTIONS = [
+// ── Suggestion chips — vary by page context ───────────────────────────────────
+const HOME_SUGGESTIONS = [
   "Show all my chits",
   "Create a new chit",
-  "Show members of a chit",
-  "Record a payment",
-  "List this month's payments",
+  "How many chits do I have?",
+];
+
+const CHIT_SUGGESTIONS = [
+  "Show all members",
+  "Show all months",
   "Add a new member",
+  "Record a payment",
+  "Who hasn't paid this month?",
+  "Add a new month",
 ];
 
 // ── Tool name → human label map ───────────────────────────────────────────────
@@ -72,14 +85,7 @@ const Prose = ({ text }: { text: string }) => {
 };
 
 // ── Tool call status pill ─────────────────────────────────────────────────────
-const ToolPill = ({
-  toolName,
-  state,
-}: {
-  toolName: string;
-  // state from UIToolInvocation: 'input-streaming' | 'input-available' | 'output-available' | 'output-error' | ...
-  state: string;
-}) => {
+const ToolPill = ({ toolName, state }: { toolName: string; state: string }) => {
   const done = state === "output-available" || state === "output-error";
   const label = TOOL_LABELS[toolName] ?? toolName;
 
@@ -106,16 +112,14 @@ const ToolPill = ({
 const MessageBubble = ({ message }: { message: UIMessage }) => {
   const isUser = message.role === "user";
 
-  // Extract text content from parts
   const textContent = message.parts
     .filter(isTextUIPart)
     .map((p) => p.text)
     .join("");
 
-  // Extract tool parts (both static typed tools and dynamic tools)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const toolParts = message.parts.filter((p): p is any =>
-    p.type === "dynamic-tool" || isToolUIPart(p as never),
+  const toolParts = message.parts.filter(
+    (p): p is any => p.type === "dynamic-tool" || isToolUIPart(p as never),
   );
 
   return (
@@ -125,7 +129,6 @@ const MessageBubble = ({ message }: { message: UIMessage }) => {
         isUser ? "justify-end" : "justify-start",
       )}
     >
-      {/* Bot avatar */}
       {!isUser && (
         <div className="size-7 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
           <BotIcon className="size-3.5 text-primary-foreground" />
@@ -138,7 +141,6 @@ const MessageBubble = ({ message }: { message: UIMessage }) => {
           isUser ? "items-end" : "items-start",
         )}
       >
-        {/* Tool invocation pills */}
         {toolParts.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {toolParts.map(
@@ -154,7 +156,6 @@ const MessageBubble = ({ message }: { message: UIMessage }) => {
           </div>
         )}
 
-        {/* Text bubble */}
         {textContent && (
           <div
             className={cn(
@@ -169,7 +170,6 @@ const MessageBubble = ({ message }: { message: UIMessage }) => {
         )}
       </div>
 
-      {/* User avatar */}
       {isUser && (
         <div className="size-7 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 mt-0.5">
           <UserIcon className="size-3.5 text-muted-foreground" />
@@ -183,17 +183,16 @@ const MessageBubble = ({ message }: { message: UIMessage }) => {
 export const AgentChat = ({
   isOpen,
   onClose,
+  pageContext,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  pageContext: PageContext;
 }) => {
-  // ai-sdk v6 / @ai-sdk/react v3 API:
-  // - no input/handleInputChange/handleSubmit/isLoading
-  // - use sendMessage({ text }) to send
-  // - status: 'ready' | 'submitted' | 'streaming' | 'error'
   const { messages, status, sendMessage, setMessages } = useChat({
-    // `useChat` uses `transport` in @ai-sdk/react v3 (not `api` directly).
-    transport: new DefaultChatTransport({ api: "/api/agent" }),
+    transport: new DefaultChatTransport({
+      api: "/api/agent",
+    }),
   });
 
   const isLoading = status === "submitted" || status === "streaming";
@@ -202,12 +201,10 @@ export const AgentChat = ({
   const bottomRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll on new messages
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Focus input when opened
   React.useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100);
   }, [isOpen]);
@@ -216,17 +213,27 @@ export const AgentChat = ({
     const text = input.trim();
     if (!text || isLoading) return;
     setInput("");
-    // Reset textarea height
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-    }
-    sendMessage({ text });
+    if (inputRef.current) inputRef.current.style.height = "auto";
+    sendMessage(
+      { text },
+      {
+        body: {
+          pageContext,
+        },
+      },
+    );
   };
 
   const handleSuggestion = (text: string) => {
     if (isLoading) return;
-    setInput("");
-    sendMessage({ text });
+    sendMessage(
+      { text },
+      {
+        body: {
+          pageContext,
+        },
+      },
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -236,7 +243,6 @@ export const AgentChat = ({
     }
   };
 
-  // Auto-resize textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     e.target.style.height = "auto";
@@ -246,6 +252,12 @@ export const AgentChat = ({
   if (!isOpen) return null;
 
   const isEmpty = messages.length === 0;
+  const suggestions =
+    pageContext.page === "chit" ? CHIT_SUGGESTIONS : HOME_SUGGESTIONS;
+  const contextLabel =
+    pageContext.page === "chit"
+      ? (pageContext.chitName ?? "Current chit")
+      : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:p-6 pointer-events-none">
@@ -258,20 +270,24 @@ export const AgentChat = ({
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-full bg-primary flex items-center justify-center">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="size-8 rounded-full bg-primary flex items-center justify-center shrink-0">
               <SparklesIcon className="size-4 text-primary-foreground" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold leading-tight">
                 Chit Assistant
               </p>
-              <p className="text-[11px] text-muted-foreground leading-tight">
-                {isLoading ? "Thinking…" : "Ready to help"}
+              <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                {isLoading
+                  ? "Thinking…"
+                  : contextLabel
+                    ? `📍 ${contextLabel}`
+                    : "Ready to help"}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {messages.length > 0 && (
               <Button
                 variant="ghost"
@@ -296,7 +312,6 @@ export const AgentChat = ({
 
         {/* ── Messages ────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {/* Welcome state */}
           {isEmpty && (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-4">
               <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -305,11 +320,22 @@ export const AgentChat = ({
               <div>
                 <p className="font-semibold text-base">How can I help?</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Ask me to manage your chits, members, months and payments.
+                  {pageContext.page === "chit"
+                    ? `I'm ready to help with ${contextLabel ?? "this chit"} — members, months, payments and more.`
+                    : "Ask me to manage your chits, members, months and payments."}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center mt-1">
-                {SUGGESTIONS.map((s) => (
+
+              {/* Page context badge */}
+              {pageContext.page === "chit" && contextLabel && (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+                  <span className="size-1.5 rounded-full bg-green-500 inline-block" />
+                  {contextLabel}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 justify-center">
+                {suggestions.map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -323,12 +349,10 @@ export const AgentChat = ({
             </div>
           )}
 
-          {/* Message list */}
           {messages.map((m) => (
             <MessageBubble key={m.id} message={m} />
           ))}
 
-          {/* Typing indicator — shown while waiting for first token */}
           {isLoading && messages[messages.length - 1]?.role === "user" && (
             <div className="flex gap-2.5 justify-start">
               <div className="size-7 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -353,7 +377,11 @@ export const AgentChat = ({
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your chits…"
+              placeholder={
+                pageContext.page === "chit"
+                  ? "Ask about members, months, payments…"
+                  : "Ask anything about your chits…"
+              }
               rows={1}
               disabled={isLoading}
               className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground min-h-[24px] max-h-[120px] leading-6 disabled:opacity-50"

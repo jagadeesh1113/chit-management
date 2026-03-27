@@ -6,8 +6,22 @@ import { z } from "zod";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages, pageContext } = await req.json();
   const modelMessages = await convertToModelMessages(messages);
+
+  // pageContext shape: { page: "home" } | { page: "chit", chitId: string, chitName?: string }
+  const isChitPage = pageContext?.page === "chit" && pageContext?.chitId;
+  const contextBlock = isChitPage
+    ? `
+## CURRENT PAGE CONTEXT
+The user is currently viewing the chit detail page.
+- Current chit ID: ${pageContext.chitId}${pageContext.chitName ? `\n- Current chit name: ${pageContext.chitName}` : ""}
+
+IMPORTANT: For ALL operations on members, months, and payments, automatically use this chit ID (${pageContext.chitId}) — do NOT ask the user for a chit ID. Only ask for a chit ID if the user explicitly asks to work on a DIFFERENT chit.`
+    : `
+## CURRENT PAGE CONTEXT
+The user is on the home page (chit list). No specific chit is selected.
+When the user asks about members, months, or payments, you MUST ask which chit they want to work with first (either list their chits and let them choose, or ask them to specify).`;
 
   const supabase = await createClient();
   const {
@@ -41,7 +55,8 @@ Always confirm destructive actions (delete) with the user before proceeding.
 When creating or editing, ask for missing required fields.
 Be concise and friendly. Format amounts in Indian Rupees (₹).
 When listing items, present them in a clean readable format.
-Today's date is ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}.`,
+Today's date is ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}.
+${contextBlock}`,
 
     messages: modelMessages,
 
