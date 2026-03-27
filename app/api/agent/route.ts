@@ -204,8 +204,23 @@ Today's date is ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month
             })
             .select()
             .single();
-          if (error) return { error: error.message };
-          return { success: true, chit: data };
+
+          // Create Member as well
+          const { data: member, error: memberError } = await supabase
+            .from("members")
+            .insert({
+              name: user?.user_metadata?.name ?? user?.email,
+              mobile: user?.user_metadata?.mobile,
+              created_by: user?.id,
+              chit_id: data?.id,
+              owner: true,
+            })
+            .select()
+            .single();
+
+          if (error || memberError)
+            return { error: error?.message || memberError?.message };
+          return { success: true, chit: data, member: member };
         },
       }),
 
