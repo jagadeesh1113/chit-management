@@ -101,7 +101,8 @@ function ContactPickerButton({
 
     // Use { capture: true } to intercept before any React handler
     btn.addEventListener("click", handleNativeClick, { capture: true });
-    return () => btn.removeEventListener("click", handleNativeClick, { capture: true });
+    return () =>
+      btn.removeEventListener("click", handleNativeClick, { capture: true });
   }, [supported, picking, onPicked]);
 
   return (
@@ -173,27 +174,27 @@ export const AddMembers = ({
     );
 
   // ── Handle contacts picked from device ────────────────────────────────────
-  const handlePicked = React.useCallback(
-    (contacts: DeviceContact[]) => {
-      const mapped: MemberRow[] = contacts
-        .map((c) =>
-          newRow(
-            c.name?.[0]?.trim() ?? "",
-            c.tel?.[0]?.replace(/\s+/g, "").trim() ?? "",
-          ),
-        )
-        .filter((r) => r.name || r.mobile);
+  const handlePicked = React.useCallback((contacts: DeviceContact[]) => {
+    const mapped: MemberRow[] = contacts
+      .map((c) =>
+        newRow(
+          c.name?.[0]?.trim() ?? "",
+          c.tel?.[0]
+            ?.replace(/^(\+91|0)/, "")
+            ?.replace(/\s+/g, "")
+            .trim() ?? "",
+        ),
+      )
+      .filter((r) => r.name || r.mobile);
 
-      setRows((prev) => {
-        const cleaned = prev.filter((r) => r.name.trim() || r.mobile.trim());
-        const existingMobiles = new Set(cleaned.map((r) => r.mobile));
-        const fresh = mapped.filter((r) => !existingMobiles.has(r.mobile));
-        const merged = [...cleaned, ...fresh];
-        return merged.length ? merged : [newRow()];
-      });
-    },
-    [],
-  );
+    setRows((prev) => {
+      const cleaned = prev.filter((r) => r.name.trim() || r.mobile.trim());
+      const existingMobiles = new Set(cleaned.map((r) => r.mobile));
+      const fresh = mapped.filter((r) => !existingMobiles.has(r.mobile));
+      const merged = [...cleaned, ...fresh];
+      return merged.length ? merged : [newRow()];
+    });
+  }, []);
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -252,7 +253,6 @@ export const AddMembers = ({
 
       <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-xl p-0 gap-0">
         <form onSubmit={handleSubmit} className="flex flex-col max-h-[90dvh]">
-
           {/* Fixed header */}
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
             <DialogTitle className="text-base">Add Members</DialogTitle>
@@ -265,7 +265,6 @@ export const AddMembers = ({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-
             {/* Contact Picker — native event listener, safe inside Portal */}
             <ContactPickerButton onPicked={handlePicked} disabled={loading} />
 
@@ -304,7 +303,9 @@ export const AddMembers = ({
                       <UserIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                       <Input
                         value={row.name}
-                        onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(row.id, "name", e.target.value)
+                        }
                         placeholder="Full name"
                         required
                         className="pl-8 h-9 text-sm"
@@ -314,7 +315,9 @@ export const AddMembers = ({
                       <PhoneIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                       <Input
                         value={row.mobile}
-                        onChange={(e) => updateRow(row.id, "mobile", e.target.value)}
+                        onChange={(e) =>
+                          updateRow(row.id, "mobile", e.target.value)
+                        }
                         placeholder="Mobile number"
                         inputMode="numeric"
                         className="pl-8 h-9 text-sm"
