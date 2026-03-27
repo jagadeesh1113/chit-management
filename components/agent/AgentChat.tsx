@@ -192,12 +192,6 @@ export const AgentChat = ({
   const { messages, status, sendMessage, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/agent",
-      prepareSendMessagesRequest: ({ messages: msgs }) => ({
-        body: {
-          messages: msgs,
-          pageContext,
-        },
-      }),
     }),
   });
 
@@ -220,12 +214,26 @@ export const AgentChat = ({
     if (!text || isLoading) return;
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "auto";
-    sendMessage({ text });
+    sendMessage(
+      { text },
+      {
+        body: {
+          pageContext,
+        },
+      },
+    );
   };
 
   const handleSuggestion = (text: string) => {
     if (isLoading) return;
-    sendMessage({ text });
+    sendMessage(
+      { text },
+      {
+        body: {
+          pageContext,
+        },
+      },
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
