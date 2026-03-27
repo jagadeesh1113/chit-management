@@ -3,6 +3,8 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { PWAProvider } from "@/components/PWAProvider";
+import { AgentProvider } from "@/components/agent/AgentProvider";
+import { Suspense } from "react";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -85,6 +87,9 @@ export default function RootLayout({
           <PWAProvider>
             {children}
             <Toaster />
+            <Suspense fallback={null}>
+              <AgentProvider />
+            </Suspense>
           </PWAProvider>
         </ThemeProvider>
       </body>

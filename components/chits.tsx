@@ -6,6 +6,8 @@ import { AddOrUpdateChit } from "./chit-dialog";
 import { ChitTable } from "./ChitTable";
 import { useState } from "react";
 import { DeleteChitDialog } from "./delete-chit-dialog";
+import { Button } from "./ui/button";
+import { RefreshCcwIcon } from "lucide-react";
 
 export const Chits = () => {
   const { loading, values, refetch } = useFetchChits();
@@ -31,12 +33,26 @@ export const Chits = () => {
             {loading ? "Loading..." : `${values?.length ?? 0} chit${values?.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <AddOrUpdateChit
-          refetch={refetch}
-          selectedChitObj={selectedChitObj?.details}
-          editMode={selectedChitObj?.mode === "EDIT"}
-          onReset={handleResetSelectedChit}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            disabled={loading}
+            className="h-8 px-2 sm:px-3"
+          >
+            <RefreshCcwIcon
+              className={`size-3.5 ${loading ? "animate-spin" : ""}`}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+          <AddOrUpdateChit
+            refetch={refetch}
+            selectedChitObj={selectedChitObj?.details}
+            editMode={selectedChitObj?.mode === "EDIT"}
+            onReset={handleResetSelectedChit}
+          />
+        </div>
       </div>
       <ChitTable
         loading={loading}
